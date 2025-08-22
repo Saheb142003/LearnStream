@@ -1,0 +1,22 @@
+#  frontend
+/frontend/node_modules
+
+# server
+/server/node_modules
+
+# build
+dist/
+# logs
+logs/
+# coverage
+coverage/       
+
+# environment variables
+frontend/.env
+server/.env
+# IDE specific files
+.vscode/
+# OS generated files
+.DS_Store
+# Temporary files
+*.tmp
