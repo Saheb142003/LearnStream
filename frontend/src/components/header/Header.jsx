@@ -8,7 +8,7 @@ export default function Header() {
   const { isAuthenticated, user, startGoogleSignIn, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40  bg-gradient-to-br from-blue-200/30 via-indigo-200/30 to-purple-200/30 backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}

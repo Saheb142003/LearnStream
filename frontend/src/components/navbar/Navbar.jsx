@@ -7,7 +7,10 @@ const navLinkClass = ({ isActive }) =>
 
 export default function Navbar() {
   return (
-    <nav className="flex justify-between items-center px-6 py-3 bg-white border-b shadow-sm">
+    <nav
+      className="flex justify-between items-center px-6 py-3 bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200
+  shadow-sm"
+    >
       <div className="flex gap-6 font-medium">
         <NavLink to="/" className={navLinkClass}>
           Home

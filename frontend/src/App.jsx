@@ -17,7 +17,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-100">
       <Header />
       <Navbar />
-      <div className="p-6">
+      <div className="">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/feed" element={<Feed />} />

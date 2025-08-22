@@ -133,10 +133,10 @@ const Player = () => {
       </div>
 
       {/* Right: tools */}
-      <div className="w-full md:w-1/3 bg-white shadow-xl p-6 border-l flex flex-col">
-        <h1 className="text-2xl font-bold mb-4 text-indigo-600">
+      <div className="w-full md:w-10/35 bg-white shadow-xl p-6 border-l flex flex-col">
+        {/* <h1 className="text-2xl font-bold mb-4 text-indigo-600">
           QuizifyTube 🎓
-        </h1>
+        </h1> */}
 
         {loading && <p className="text-gray-500 mb-2">⏳ Loading…</p>}
         {err && (

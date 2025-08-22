@@ -54,7 +54,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 text-white px-6">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-300 text-white
+px-6"
+    >
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -63,7 +66,7 @@ export default function Home() {
         className="text-center max-w-3xl"
       >
         <h1 className="text-5xl md:text-6xl font-extrabold mb-6 drop-shadow-lg">
-          Welcome to <span className="text-yellow-300">QuizifyTube 🎓</span>
+          Welcome to <span className="text-yellow-300">LearnStream 🎓</span>
         </h1>
         <p className="text-lg md:text-xl mb-8 opacity-90 leading-relaxed">
           Turn your <span className="font-semibold">YouTube videos</span> and{" "}
@@ -91,9 +94,9 @@ export default function Home() {
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold shadow-md hover:scale-105 transform transition disabled:opacity-60"
+            className="px-6 py-3 rounded-xl bg-white text-gray-900 font-bold shadow-md hover:scale-90 transform transition disabled:opacity-60"
           >
-            {loading ? "Adding…" : "Learn Now"}
+            {loading ? "Adding…" : "Watch"}
           </button>
         </form>
         {err && <p className="text-sm text-red-200 mb-4">{err}</p>}
@@ -101,7 +104,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             to="/feed"
-            className="px-6 py-3 rounded-lg bg-yellow-400 text-gray-900 font-bold text-lg shadow-md hover:scale-105 transform transition"
+            className="px-6 py-3 rounded-lg bg-white text-gray-900 font-bold text-lg shadow-md hover:scale-105 transform transition"
           >
             🚀 Start Learning
           </Link>
@@ -148,7 +151,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-20 text-sm opacity-70">
-        © {new Date().getFullYear()} QuizifyTube — Learn Smarter, Not Harder 🚀
+        © {new Date().getFullYear()} LearnStream — Learn Smarter, Not Harder 🚀
       </footer>
     </div>
   );
