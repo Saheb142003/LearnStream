@@ -1,42 +1,39 @@
-// frontend/src/components/VideoItem.jsx
 export default function VideoItem({ video }) {
   if (
     !video ||
     !video.title ||
-    video.title.toLowerCase() === "private video" ||
-    video.title.toLowerCase() === "deleted video"
+    /^private video$/i.test(video.title) ||
+    /^deleted video$/i.test(video.title)
   ) {
-    return null; // 🚫 skip invalid entries
+    return null; // skip invalid entries
   }
 
   const getThumbnailUrl = () => {
-    // ✅ Case 1: single video
-    if (video.isSingleVideo && video.videoId) {
-      return `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`;
+    // Single video entries: actual video lives in videos[0]
+    if (video.isSingleVideo && video.videos?.[0]?.videoId) {
+      return `https://img.youtube.com/vi/${video.videos[0].videoId}/hqdefault.jpg`;
     }
 
-    // ✅ Case 2: playlist (take first video’s thumbnail)
+    // Playlist: use first item's thumbnail
     if (!video.isSingleVideo && video.videos?.length > 0) {
       return `https://img.youtube.com/vi/${video.videos[0].videoId}/hqdefault.jpg`;
     }
 
-    // ✅ Fallback
     return "https://via.placeholder.com/320x180?text=No+Image";
   };
 
   const getDisplayInfo = () => {
-    // ✅ Single video
     if (video.isSingleVideo) {
+      const v = video.videos?.[0];
       return {
-        duration: video.duration || null,
+        duration: v?.duration || null,
         isPlaylist: false,
       };
     }
 
-    // ✅ Playlist
     if (!video.isSingleVideo && video.videos?.length > 0) {
       return {
-        duration: video.totalRuntime || "0m", // safe fallback
+        duration: video.totalRuntime || "0m",
         isPlaylist: true,
         count: video.videos.length,
       };
@@ -57,16 +54,19 @@ export default function VideoItem({ video }) {
           alt={title}
           className="w-full h-44 object-cover rounded-md mb-3 shadow-sm"
           onError={(e) => {
-            if (e.target.src.includes("hqdefault")) {
-              e.target.src = e.target.src.replace("hqdefault", "mqdefault");
-            } else if (e.target.src.includes("mqdefault")) {
-              e.target.src =
+            if (e.currentTarget.src.includes("hqdefault")) {
+              e.currentTarget.src = e.currentTarget.src.replace(
+                "hqdefault",
+                "mqdefault"
+              );
+            } else if (e.currentTarget.src.includes("mqdefault")) {
+              e.currentTarget.src =
                 "https://via.placeholder.com/320x180?text=No+Image";
             }
           }}
         />
 
-        {/* Duration overlay (only for single videos) */}
+        {/* Duration overlay (single videos only) */}
         {displayInfo.duration && !displayInfo.isPlaylist && (
           <div className="absolute bottom-2 right-2 bg-black bg-opacity-90 text-white text-xs font-semibold px-2 py-1 rounded">
             {displayInfo.duration}

@@ -1,3 +1,4 @@
+// server/src/routes/playlist.js
 import express from "express";
 import Playlist from "../models/playlist.js";
 import { fetchPlaylistData, fetchVideoData } from "../utils/youtubeService.js";
@@ -7,49 +8,114 @@ const router = express.Router();
 
 router.use(ensureAuth);
 
+/* ----------------------------- helpers ------------------------------ */
+function extractVideoId(url = "") {
+  if (!url) return null;
+  try {
+    // youtu.be/<id>
+    const short = url.match(/youtu\.be\/([\w-]{11})/);
+    if (short) return short[1];
+
+    // youtube.com/watch?v=<id>
+    const vParam = url.match(/[?&]v=([\w-]{11})/);
+    if (vParam) return vParam[1];
+
+    // youtube.com/embed/<id>
+    const embed = url.match(/\/embed\/([\w-]{11})/);
+    if (embed) return embed[1];
+
+    // youtube.com/shorts/<id>
+    const shorts = url.match(/\/shorts\/([\w-]{11})/);
+    if (shorts) return shorts[1];
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractPlaylistId(url = "") {
+  if (!url) return null;
+  try {
+    const listParam = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    return listParam ? listParam[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * POST /api/playlists
- * Add a new playlist or single video for logged-in user
+ * Accepts: { url? , playlistId?, videoId? }
+ * Creates (or returns existing) entry for either a playlist or a single video.
  */
 router.post("/", async (req, res) => {
   try {
     const userId = req.user._id;
-    const { playlistId, videoId } = req.body;
+    let { url, playlistId, videoId } = req.body || {};
+
+    // Accept a raw URL too
+    if (url) {
+      const p = extractPlaylistId(url);
+      const v = extractVideoId(url);
+      playlistId = playlistId || p || null;
+      videoId = videoId || (!p && v ? v : null); // if playlist present prefer playlist; else use video
+    }
 
     if (!playlistId && !videoId) {
       return res
         .status(400)
-        .json({ message: "playlistId or videoId required" });
+        .json({
+          message: "Provide either a YouTube playlist or video URL/ID.",
+        });
     }
 
-    let playlistData;
+    let canonicalKey;
+    let payload;
 
     if (playlistId) {
-      playlistData = await fetchPlaylistData(playlistId);
-      playlistData.isSingleVideo = false;
-    } else if (videoId) {
+      // Check if already saved for this user
+      canonicalKey = playlistId; // keyed by playlist id
+      const existing = await Playlist.findOne({
+        user: userId,
+        playlistId: canonicalKey,
+      });
+      if (existing) return res.status(200).json(existing);
+
+      const data = await fetchPlaylistData(playlistId);
+      payload = {
+        user: userId,
+        playlistId: data.playlistId,
+        title: data.title,
+        videos: data.videos,
+        isSingleVideo: false,
+        totalRuntime: data.totalRuntime || null,
+      };
+    } else {
+      // single video entry
+      canonicalKey = videoId; // key by video id
+      const existing = await Playlist.findOne({
+        user: userId,
+        playlistId: canonicalKey,
+      });
+      if (existing) return res.status(200).json(existing);
+
       const videoInfo = await fetchVideoData(videoId);
-      playlistData = {
-        playlistId: videoId,
+      payload = {
+        user: userId,
+        playlistId: videoId, // keep the same shape in your schema
         title: videoInfo.title,
         videos: [videoInfo],
         isSingleVideo: true,
+        totalRuntime: videoInfo.duration || null,
       };
     }
 
-    const newPlaylist = new Playlist({
-      user: userId,
-      playlistId: playlistData.playlistId,
-      title: playlistData.title,
-      videos: playlistData.videos,
-      isSingleVideo: playlistData.isSingleVideo,
-      totalRuntime: playlistData.totalRuntime,
-    });
-
-    await newPlaylist.save();
-    return res.status(201).json(newPlaylist);
+    const created = await new Playlist(payload).save();
+    return res.status(201).json(created);
   } catch (err) {
-    console.error(err);
+    console.error("Create playlist/video error:", err);
+    // ensureAuth will already send 401 when not authed; if it reaches here it’s server error
     res.status(500).json({ message: err.message || "Server error" });
   }
 });

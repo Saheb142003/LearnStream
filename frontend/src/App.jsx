@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Playlist from "./pages/Playlist/Playlist";
 import Learning from "./pages/MyLearning/Learning";
 import VideoPlayer from "./pages/Playlist/VideoPlayer";
+import Player from "./pages/VideoPlayer/Player"; // <-- new fancy player
 
 export default function App() {
   return (
@@ -22,9 +23,12 @@ export default function App() {
           <Route path="/feed" element={<Feed />} />
           <Route path="/playlist" element={<Playlist />} />
           <Route path="/video/:id" element={<VideoPlayer />} />
+
+          {/* New Player route */}
+          <Route path="/player/:id" element={<Player />} />
+
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/learning" element={<Learning />} />
-
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </div>

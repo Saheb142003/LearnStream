@@ -1,3 +1,4 @@
+// server/src/utils/youtubeService.js
 import fetch from "node-fetch";
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const API_BASE = "https://www.googleapis.com/youtube/v3";

@@ -1,26 +1,29 @@
-// frontend/src/components/navbar/Navbar.jsx
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+
+const navLinkClass = ({ isActive }) =>
+  `hover:text-blue-600 transition ${
+    isActive ? "text-blue-600 font-semibold" : "text-gray-700"
+  }`;
 
 export default function Navbar() {
   return (
     <nav className="flex justify-between items-center px-6 py-3 bg-white border-b shadow-sm">
-      {/* Left Nav Links */}
-      <div className="flex gap-6 text-gray-700 font-medium">
-        <Link to="/" className="hover:text-blue-600 transition">
+      <div className="flex gap-6 font-medium">
+        <NavLink to="/" className={navLinkClass}>
           Home
-        </Link>
-        <Link to="/feed" className="hover:text-blue-600 transition">
+        </NavLink>
+        <NavLink to="/feed" className={navLinkClass}>
           Feed
-        </Link>
-        <Link to="/playlist" className="hover:text-blue-600 transition">
+        </NavLink>
+        <NavLink to="/playlist" className={navLinkClass}>
           Playlist
-        </Link>
-        <Link to="/learning" className="hover:text-blue-600 transition">
+        </NavLink>
+        <NavLink to="/learning" className={navLinkClass}>
           My Learning
-        </Link>
-        <Link to="/dashboard" className="hover:text-blue-600 transition">
+        </NavLink>
+        <NavLink to="/dashboard" className={navLinkClass}>
           Dashboard
-        </Link>
+        </NavLink>
       </div>
     </nav>
   );
