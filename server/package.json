@@ -21,6 +21,8 @@
     "node-fetch": "^3.3.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "process": "^0.11.10"
+    "process": "^0.11.10",
+    "youtube-transcript": "^1.2.1",
+    "ytdl-core": "^4.11.5"
   }
 }

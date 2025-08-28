@@ -42,14 +42,14 @@ export default function AddPlaylistForm({ onAdd }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-6">
+    <form onSubmit={handleSubmit} className="mb-6 ml-55">
       <label className="block mb-2 font-semibold">
         Add YouTube Video or Playlist Link
       </label>
       <input
         type="text"
         placeholder="Paste YouTube video or playlist URL"
-        className="w-full p-2 border border-gray-300 rounded"
+        className="w-180 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         required
@@ -57,7 +57,7 @@ export default function AddPlaylistForm({ onAdd }) {
       {error && <p className="text-red-500 mt-1">{error}</p>}
       <button
         type="submit"
-        className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="mt-3 ml-5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
       >
         Add
       </button>

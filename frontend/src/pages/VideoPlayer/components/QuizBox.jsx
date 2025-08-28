@@ -1,3 +1,4 @@
+// frontend/src/pages/VideoPlayer/components/QuizBox.jsx
 import React from "react";
 
 const QuizBox = ({ quiz }) => {

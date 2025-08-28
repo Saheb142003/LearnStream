@@ -1,3 +1,4 @@
+// frontend/src/pages/VideoPlayer/components/VideoFrame.jsx
 import React from "react";
 
 const VideoFrame = ({ embedUrl }) => {
@@ -18,6 +19,8 @@ const VideoFrame = ({ embedUrl }) => {
       className="rounded-xl shadow-lg"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
       allowFullScreen
+      loading="lazy" // this uses in new commit
+      referrerPolicy="strict-origin-when-cross-origin"
     />
   );
 };

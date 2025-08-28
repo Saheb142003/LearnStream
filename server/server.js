@@ -13,6 +13,8 @@ import "./src/config/passport.js"; // Passport config
 
 import playlistRoutes from "./src/routes/playlist.js";
 
+import videosRouter from "./src/routes/playerControl/transcript.js";
+
 const app = express();
 
 // ✅ Connect to MongoDB
@@ -21,7 +23,7 @@ connectDB();
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
   })
 );
@@ -52,6 +54,9 @@ app.get("/", (req, res) => {
 // PlAYLIST routes
 
 app.use("/api/playlists", playlistRoutes);
+
+// Player Contorls
+app.use("/api/videos", videosRouter);
 
 // Optional protected test route
 app.get("/private", (req, res) => {

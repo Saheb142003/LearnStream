@@ -1,3 +1,4 @@
+// frontend/src/pages/VideoPlayer/components/SummaryBox.jsx
 import React from "react";
 
 const SummaryBox = ({ summary }) => {
