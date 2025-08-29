@@ -12,8 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Prefer env, fallback to local
-  const BASE_URL =
-    import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // 🔹 Fetch user on mount
   useEffect(() => {
@@ -22,18 +21,25 @@ export function AuthProvider({ children }) {
         withCredentials: true,
       })
       .then((res) => {
-        if (res.data.user) {
-          setUser(res.data.user);
-        } else {
-          setUser(null);
-        }
+        setUser(res.data?.user || null);
       })
-      .catch(() => setUser(null))
+      .catch((err) => {
+        // ⚠️ 401 is normal when not logged in → don't log error, just set user = null
+        if (err.response?.status !== 401) {
+          console.error("Auth check failed:", err);
+        }
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, [BASE_URL]);
 
   // 🔹 Trigger Google Login
   const startGoogleSignIn = () => {
+    try {
+      sessionStorage.setItem("afterAuthRedirect", window.location.pathname);
+    } catch {
+      null;
+    }
     window.open(`${BASE_URL}/auth/google`, "_self"); // ✅ fixed (removed extra /auth)
   };
 

@@ -27,9 +27,9 @@ export default function Navbar() {
         <NavLink to="/dashboard" className={navLinkClass}>
           Dashboard
         </NavLink>
-        <NavLink to="/player" className={navLinkClass}>
+        {/* <NavLink to="/player" className={navLinkClass}>
           Player
-        </NavLink>
+        </NavLink> */}
       </div>
     </nav>
   );

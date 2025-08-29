@@ -16,7 +16,7 @@ export default function Header() {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-600 to-violet-600 text-white grid place-items-center shadow-sm">
               <PlaySquare className="w-5 h-5" />
             </div>
-            <span className="sr-only">Logo</span>
+            <span className="sr-only">LearnStream Logo</span>
           </div>
 
           {/* App Name */}

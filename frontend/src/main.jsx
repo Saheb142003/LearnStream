@@ -7,7 +7,7 @@ import { AuthProvider } from "./context/AuthContext"; // ✅ wrap everything
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-   <AuthProvider>
+  <AuthProvider>
     <BrowserRouter>
       <App />
     </BrowserRouter>
