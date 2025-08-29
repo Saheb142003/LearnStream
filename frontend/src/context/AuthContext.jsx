@@ -1,4 +1,3 @@
-// frontend/src/context/AuthContext.jsx
 import { createContext, useEffect, useState } from "react";
 import React from "react";
 import axios from "axios";
@@ -11,9 +10,12 @@ export const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // Fetch user on mount
+  // Prefer env, fallback to local
+  const BASE_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  // 🔹 Fetch user on mount
   useEffect(() => {
     axios
       .get(`${BASE_URL}/auth/login/success`, {
@@ -30,12 +32,12 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, [BASE_URL]);
 
-  // ✅ Trigger Google Login
+  // 🔹 Trigger Google Login
   const startGoogleSignIn = () => {
-    window.open(`${BASE_URL}/auth/auth/google`, "_self");
+    window.open(`${BASE_URL}/auth/google`, "_self"); // ✅ fixed (removed extra /auth)
   };
 
-  // ✅ Logout
+  // 🔹 Logout
   const signOut = () => {
     window.open(`${BASE_URL}/auth/logout`, "_self");
     setUser(null);
