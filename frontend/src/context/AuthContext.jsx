@@ -11,11 +11,12 @@ export const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Fetch user on mount
   useEffect(() => {
     axios
-      .get("http://localhost:5000/auth/login/success", {
+      .get(`${BASE_URL}/auth/login/success`, {
         withCredentials: true,
       })
       .then((res) => {
@@ -27,16 +28,16 @@ export function AuthProvider({ children }) {
       })
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, []);
+  }, [BASE_URL]);
 
   // ✅ Trigger Google Login
   const startGoogleSignIn = () => {
-    window.open("http://localhost:5000/auth/google", "_self");
+    window.open(`${BASE_URL}/auth/auth/google`, "_self");
   };
 
   // ✅ Logout
   const signOut = () => {
-    window.open("http://localhost:5000/auth/logout", "_self");
+    window.open(`${BASE_URL}/auth/logout`, "_self");
     setUser(null);
   };
 
