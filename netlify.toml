@@ -1,0 +1,11 @@
+# netlify.toml (place at repository root)
+[build]
+  base = "frontend"          # start builds inside frontend/
+  command = "npm run build"  # run build script (this uses frontend/package.json)
+  publish = "dist"           # relative to `base` (so frontend/dist)
+
+[build.environment]
+  # If you need a specific Node.js version for Vite, set it here (or use .nvmrc)
+  NODE_VERSION = "20.19.0"
+
+# Do NOT put secrets here. Set VITE_API_URL and VITE_SERVER_URL in Netlify UI.
