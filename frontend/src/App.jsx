@@ -2,7 +2,7 @@
 import { Routes, Route } from "react-router-dom";
 import Header from "./components/header/Header";
 import Navbar from "./components/navbar/Navbar";
-import Profile from "./pages/profile/Profile";
+import Profile from "./pages/Profile/Profile";
 
 import Home from "./pages/Home/Home";
 import Feed from "./pages/Feed/Feed";
