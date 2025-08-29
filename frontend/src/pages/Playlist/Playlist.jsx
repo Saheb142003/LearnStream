@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AddPlaylistForm from "./AddPlaylistForm";
 import PlaylistList from "./PlaylistList";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Playlist() {
   const [playlists, setPlaylists] = useState([]);

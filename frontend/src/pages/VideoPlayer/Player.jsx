@@ -14,7 +14,7 @@ import SummaryBox from "./components/SummaryBox";
 import QuizBox from "./components/QuizBox";
 import Predisplay from "./components/Predisplay";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BASE_URL = import.meta.env.VITE_API_URL;
 const AUTH_ROUTE = "/profile";
 
 function isMongoObjectId(str) {

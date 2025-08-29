@@ -23,7 +23,7 @@ connectDB();
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
@@ -36,7 +36,11 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false }, // ⚠️ set true if using HTTPS
+    cookie: {
+      httpOnly: true,
+      secure: true, // ⬅️ IMPORTANT: required for cross-site cookies
+      sameSite: "none", // ⬅️ IMPORTANT: allow cross-site
+    },
   })
 );
 
