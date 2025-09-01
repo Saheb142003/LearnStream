@@ -1,4 +1,5 @@
 // server/server.js
+import MongoStore from "connect-mongo";
 import dotenv from "dotenv";
 dotenv.config();
 
