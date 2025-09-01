@@ -30,15 +30,20 @@ app.use(
 
 app.use(express.json());
 
+app.set("trust proxy", 1);
 // Session setup
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+    }),
     cookie: {
       httpOnly: true,
-      secure: true, // ⬅️ IMPORTANT: required for cross-site cookies
+      secure: process.env.NODE_ENV === "production", // ⬅️ IMPORTANT: required for cross-site cookies
       sameSite: "none", // ⬅️ IMPORTANT: allow cross-site
     },
   })
