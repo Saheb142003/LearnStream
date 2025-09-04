@@ -1,3 +1,4 @@
+# server/scripts/fetch_transcript.py
 import sys
 import json
 import re
