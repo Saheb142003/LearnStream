@@ -1,3 +1,4 @@
+// frontend/src/pages/Playlist/VideoItem.jsx
 export default function VideoItem({ video }) {
   if (
     !video ||

@@ -13,6 +13,7 @@ import authRoutes from "./src/routes/auth.js";
 import "./src/config/passport.js"; // Passport config
 
 import playlistRoutes from "./src/routes/playlist.js";
+import feedRoutes from "./src/routes/feed.js";
 
 import videosRouter from "./src/routes/playerControl/transcript.js";
 
@@ -45,7 +46,8 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // ⬅️ IMPORTANT: required for cross-site cookies
-      sameSite: "none", // ⬅️ IMPORTANT: allow cross-site
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
 );
@@ -65,6 +67,9 @@ app.get("/", (req, res) => {
 
 app.use("/api/playlists", playlistRoutes);
 
+// Feed route
+app.use("/api/feed", feedRoutes);
+
 // Player Contorls
 app.use("/api/videos", videosRouter);
 
@@ -78,5 +83,5 @@ app.get("/private", (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
