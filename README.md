@@ -136,11 +136,11 @@ LearnStream/
 
 ### 🎥 Home View
 
-![Home View](./frontend/assets/Capture1.JPG)
+![Home View](./frontend/assets/Home.JPG)
 
 ### 🎥 Feed View
 
-![Feed View](./frontend/assets/Feed.png)
+![Feed View](./frontend/assets/Feed.JPG)
 
 ---
 
