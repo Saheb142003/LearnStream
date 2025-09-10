@@ -4,17 +4,6 @@ import Playlist from "../models/playlist.js";
 
 const router = express.Router();
 
-// Middleware to check authentication
-const requireAuth = (req, res, next) => {
-  if (!req.isAuthenticated?.() || !req.user) {
-    return res.status(401).json({
-      success: false,
-      message: "Authentication required",
-    });
-  }
-  next();
-};
-
 // Mulberry32 seeded RNG
 function mulberry32(seed) {
   let t = seed >>> 0;
@@ -35,20 +24,20 @@ const shuffleWithRng = (arr, rng) => {
   return arr;
 };
 
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const {
       search = "",
       sort = "random",
       limit = 50,
       offset = 0,
-      seed = "", // client-provided seed (string/number)
-      userShare = "0.05", // optional override (string)
+      seed = "",
+      userShare = "0.05",
     } = req.query;
 
     const limitNum = Math.max(1, parseInt(limit, 10) || 50);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
-    const ratioMine = Math.max(0, Math.min(1, parseFloat(userShare) || 0.05)); // clamp 0..1
+    const ratioMine = Math.max(0, Math.min(1, parseFloat(userShare) || 0.05));
 
     // determine seed number
     let seedNum;
@@ -59,10 +48,10 @@ router.get("/", requireAuth, async (req, res) => {
     }
     const rng = mulberry32(seedNum);
 
-    // Fetch playlists from all users that have at least one video.
+    // Fetch playlists from all users that have at least one video
     const playlists = await Playlist.find({ "videos.0": { $exists: true } })
       .select("title videos isSingleVideo createdAt user")
-      .populate("user", "name avatar") // optional avatar field
+      .populate("user", "name avatar")
       .lean();
 
     if (!playlists || playlists.length === 0) {
@@ -79,13 +68,11 @@ router.get("/", requireAuth, async (req, res) => {
 
     // Build video entries with uploader metadata
     const allVideos = [];
-    const currentUserIdStr = String(req.user._id);
-
     playlists.forEach((playlist) => {
       const uploader = playlist.user || {};
       const uploaderIdStr = String(uploader._id || "");
       const uploaderName = uploader.name || "Unknown";
-      const uploaderAvatar = uploader.avatar || null; // optional
+      const uploaderAvatar = uploader.avatar || null;
 
       (playlist.videos || []).forEach((video) => {
         if (
@@ -104,7 +91,6 @@ router.get("/", requireAuth, async (req, res) => {
             playlistId: playlist._id,
             isSingleVideo: !!playlist.isSingleVideo,
             addedAt: playlist.createdAt,
-            // prefer an explicit thumbnail property if present on video, else youtube maxres/hq fallback on client
             thumbnailUrl:
               video.thumbnailUrl ||
               `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`,
@@ -116,24 +102,12 @@ router.get("/", requireAuth, async (req, res) => {
       });
     });
 
-    // Split into other users' videos and current user's videos
-    const otherVideos = allVideos.filter(
-      (v) => v.uploaderId !== currentUserIdStr
-    );
-    const myVideos = allVideos.filter((v) => v.uploaderId === currentUserIdStr);
+    // No current user (public feed) → treat all videos as "other"
+    let filteredVideos = allVideos;
 
-    // Apply search BEFORE mixing
-    let filteredOther = otherVideos;
-    let filteredMine = myVideos;
     if (search && search.trim()) {
       const s = search.toLowerCase();
-      filteredOther = otherVideos.filter(
-        (v) =>
-          v.title.toLowerCase().includes(s) ||
-          (v.playlistTitle || "").toLowerCase().includes(s) ||
-          (v.uploaderName || "").toLowerCase().includes(s)
-      );
-      filteredMine = myVideos.filter(
+      filteredVideos = filteredVideos.filter(
         (v) =>
           v.title.toLowerCase().includes(s) ||
           (v.playlistTitle || "").toLowerCase().includes(s) ||
@@ -141,7 +115,7 @@ router.get("/", requireAuth, async (req, res) => {
       );
     }
 
-    // Sorting (apply deterministic sorts; random uses rng)
+    // Sorting
     const applySort = (arr, sortKey) => {
       if (sortKey === "random") return shuffleWithRng(arr, rng);
       if (sortKey === "title")
@@ -154,45 +128,22 @@ router.get("/", requireAuth, async (req, res) => {
         return arr.sort((a, b) =>
           (a.playlistTitle || "").localeCompare(b.playlistTitle || "")
         );
-      // default: recent
       return arr.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
     };
 
-    const othersSorted = applySort(filteredOther.slice(), sort);
-    const mineSorted = applySort(filteredMine.slice(), sort);
+    const sortedVideos = applySort(filteredVideos.slice(), sort);
 
-    // Interleave to achieve approx ratioMine
-    const othersPerMine = Math.max(1, Math.round(1 / ratioMine - 1)); // e.g., ~19 for 0.05
-    const merged = [];
-    let oi = 0;
-    let mi = 0;
-
-    if (mineSorted.length === 0) {
-      merged.push(...othersSorted);
-    } else {
-      while (oi < othersSorted.length || mi < mineSorted.length) {
-        let taken = 0;
-        while (oi < othersSorted.length && taken < othersPerMine) {
-          merged.push(othersSorted[oi++]);
-          taken++;
-        }
-        if (mi < mineSorted.length) {
-          merged.push(mineSorted[mi++]);
-        }
-      }
-    }
-
-    // lightweight random neighbor swaps using same seeded rng (low intensity)
-    const swaps = Math.max(0, Math.floor(merged.length * 0.02));
+    // Lightweight neighbor swaps for variety
+    const swaps = Math.max(0, Math.floor(sortedVideos.length * 0.02));
     for (let s = 0; s < swaps; s++) {
-      const i = Math.floor(rng() * merged.length);
-      const j = Math.floor(rng() * merged.length);
-      [merged[i], merged[j]] = [merged[j], merged[i]];
+      const i = Math.floor(rng() * sortedVideos.length);
+      const j = Math.floor(rng() * sortedVideos.length);
+      [sortedVideos[i], sortedVideos[j]] = [sortedVideos[j], sortedVideos[i]];
     }
 
-    // Pagination AFTER merging
-    const total = merged.length;
-    const paginated = merged.slice(offsetNum, offsetNum + limitNum);
+    // Pagination
+    const total = sortedVideos.length;
+    const paginated = sortedVideos.slice(offsetNum, offsetNum + limitNum);
     const hasMore = offsetNum + limitNum < total;
 
     res.json({
@@ -202,7 +153,7 @@ router.get("/", requireAuth, async (req, res) => {
       hasMore,
       currentPage: Math.floor(offsetNum / limitNum) + 1,
       totalPages: Math.ceil(total / limitNum),
-      seed: seedNum, // helpful for client
+      seed: seedNum,
     });
   } catch (error) {
     console.error("Feed fetch error:", error);

@@ -50,17 +50,7 @@ export default function Feed() {
           seed: seedRef.current,
         });
 
-        const res = await fetch(`${BASE_URL}/api/feed?${params}`, {
-          credentials: "include",
-        });
-
-        if (res.status === 401) {
-          navigate("/profile", {
-            replace: true,
-            state: { redirectTo: "/feed" },
-          });
-          return;
-        }
+        const res = await fetch(`${BASE_URL}/api/feed?${params}`);
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to fetch feed");
@@ -75,7 +65,7 @@ export default function Feed() {
         setLoading(false);
       }
     },
-    [searchQuery, videos.length, loading, navigate]
+    [searchQuery, videos.length, loading]
   );
 
   const handleVideoClick = (video) => {

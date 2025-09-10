@@ -1,8 +1,9 @@
 // frontend/src/pages/Playlist/Playlist.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import AddPlaylistForm from "./AddPlaylistForm";
 import PlaylistList from "./PlaylistList";
+import { AuthContext } from "../../context/AuthContext";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -12,9 +13,18 @@ export default function Playlist() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
+
   useEffect(() => {
-    fetchMyPlaylists();
-  }, []);
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        // 🔑 Directly send user to Google OAuth login page
+        window.location.href = `${BASE_URL}/auth/google`;
+        return;
+      }
+      fetchMyPlaylists();
+    }
+  }, [authLoading, isAuthenticated]);
 
   const fetchMyPlaylists = async () => {
     setLoading(true);
@@ -92,6 +102,14 @@ export default function Playlist() {
   const handleSelect = (id) => {
     navigate(`/video/${id}`);
   };
+
+  if (authLoading) {
+    return (
+      <p className="text-center text-indigo-500 animate-pulse">
+        Checking login...
+      </p>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-4">
