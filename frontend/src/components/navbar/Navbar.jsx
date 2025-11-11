@@ -13,7 +13,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200 shadow-sm">
-      <div className="flex justify-between items-center px-6 py-3">
+      <div className="flex justify-between items-center px-6 py-2">
         {/* Left section: Logo + Nav links */}
         <div className="flex items-center gap-8">
           {/* Desktop Nav */}
@@ -47,7 +47,7 @@ export default function Navbar() {
 
       {/* Mobile Menu with animation */}
       <div
-        className={`md:hidden flex flex-col gap-3 px-6 pb-4 font-medium bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200 transition-all duration-300 overflow-hidden ${
+        className={`md:hidden flex flex-col gap-1 px-5 pb-2 font-medium bg-gradient-to-br from-blue-200 via-indigo-200 to-purple-200 transition-all duration-300 overflow-hidden ${
           open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
