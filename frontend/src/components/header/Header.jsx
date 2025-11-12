@@ -1,8 +1,9 @@
 // frontend/src/components/header/Header.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { PlaySquare } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import UserDropdown from "./UserDropdown.jsx";
+
+import Logo from "../../../assets/LS_logo.png";
 
 const TAGLINES = [
   "Your AI Companion for Smarter Learning",
@@ -154,9 +155,18 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* LEFT */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-600 to-violet-600 text-white grid place-items-center shadow-sm">
-              <PlaySquare className="w-5 h-5" />
-            </div>
+            <a
+              href="https://learnstream.netlify.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center"
+            >
+              <img
+                src={Logo}
+                alt="LearnStream"
+                className="w-10 h-10 rounded-lg shadow-sm object-cover bg-white"
+              />
+            </a>
           </div>
 
           {/* CENTER */}
