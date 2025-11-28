@@ -1,0 +1,45 @@
+services:
+  # --------------------------------------------------------------------------------
+  # BACKEND (Docker)
+  # --------------------------------------------------------------------------------
+  - type: web
+    name: learnstream-backend
+    env: docker
+    dockerContext: ./server
+    dockerfilePath: ./server/Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: SERVER_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: PYTHON_BIN
+        value: python3
+      - key: TRANSCRIPT_LANGS
+        value: en,en-US,en-GB,en-IN,hi
+
+  # --------------------------------------------------------------------------------
+  # FRONTEND (Static Site)
+  # --------------------------------------------------------------------------------
+  - type: static
+    name: learnstream-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    plan: free
+    region: oregon
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: learnstream-backend
+          property: url
