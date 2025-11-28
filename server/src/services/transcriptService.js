@@ -68,14 +68,33 @@ async function getHealthyInstances() {
   return HEALTHY_INSTANCES;
 }
 
+// Helper for delay
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function fetchInvidiousTranscript(videoId) {
   const instances = await getHealthyInstances();
   
-  for (const domain of instances) {
-    const instance = `https://${domain}`;
+  // Add some reliable hardcoded fallbacks to the end of the list
+  const allInstances = [
+    ...instances,
+    "https://inv.nadeko.net",
+    "https://yewtu.be",
+    "https://inv.tux.pizza"
+  ];
+
+  // Deduplicate
+  const uniqueInstances = [...new Set(allInstances)];
+
+  for (const domain of uniqueInstances) {
+    // Handle both full URLs and domains
+    const instance = domain.startsWith('http') ? domain : `https://${domain}`;
+    
     try {
+      // console.log(`Trying Invidious instance: ${instance}`);
       const url = `${instance}/api/v1/captions/${videoId}`;
-      const res = await fetch(url, { timeout: 5000 });
+      
+      // Increased timeout for data center latency
+      const res = await fetch(url, { timeout: 8000 });
       if (!res.ok) continue;
 
       const data = await res.json();
@@ -86,7 +105,7 @@ async function fetchInvidiousTranscript(videoId) {
       const track = captions.find(c => c.languageCode === 'en') || captions[0];
       const trackUrl = instance + track.url;
 
-      const trackRes = await fetch(trackUrl);
+      const trackRes = await fetch(trackUrl, { timeout: 8000 });
       if (!trackRes.ok) continue;
 
       const vttText = await trackRes.text();
@@ -109,6 +128,9 @@ async function fetchInvidiousTranscript(videoId) {
       return text.trim();
 
     } catch (e) {
+      // console.warn(`Invidious instance ${instance} failed: ${e.message}`);
+      // Small delay before next attempt to be nice
+      await delay(500);
       continue;
     }
   }
