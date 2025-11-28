@@ -117,7 +117,16 @@ async function fetchInvidiousTranscript(videoId) {
 
       for (let line of lines) {
         line = line.trim();
-        if (!line || line.includes('-->') || /^\d+$/.test(line) || line.startsWith('WEBVTT')) continue;
+        // Skip empty, header, timestamps, numbers, and metadata
+        if (!line || 
+            line.includes('-->') || 
+            /^\d+$/.test(line) || 
+            line.startsWith('WEBVTT') || 
+            line.startsWith('Kind:') || 
+            line.startsWith('Language:') ||
+            line.startsWith('Style:')
+        ) continue;
+        
         const cleanLine = line.replace(/<[^>]*>/g, '').trim();
         if (cleanLine && !seen.has(cleanLine)) {
           text += cleanLine + " ";

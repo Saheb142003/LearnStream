@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import VideoFrame from "./components/VideoFrame";
 import VideoControls from "./components/VideoControls";
@@ -222,15 +223,39 @@ const Player = () => {
               activeVideoId={activeVideoId}
             />
 
-            {viewMode === "transcript" && (
-              <TranscriptBox
-                loading={transcriptLoading}
-                transcript={transcript || <Predisplay />} // displays the predisplay component how to generated the transcript,summary,quiz
-              />
-            )}
+            <AnimatePresence mode="wait">
+              {viewMode === "transcript" && (
+                <TranscriptBox
+                  key="transcript"
+                  loading={transcriptLoading}
+                  transcript={transcript || <Predisplay />}
+                />
+              )}
 
-            {viewMode === "summary" && <SummaryBox summary={""} />}
-            {viewMode === "quiz" && <QuizBox quiz={[]} />}
+              {viewMode === "summary" && (
+                <motion.div
+                  key="summary"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <SummaryBox summary={""} />
+                </motion.div>
+              )}
+
+              {viewMode === "quiz" && (
+                <motion.div
+                  key="quiz"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <QuizBox quiz={[]} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         ) : (
           !loading && <p className="text-gray-500">No video loaded.</p>

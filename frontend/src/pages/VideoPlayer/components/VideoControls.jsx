@@ -1,5 +1,5 @@
-// frontend/src/pages/VideoPlayer/components/VideoControls.jsx
 import React from "react";
+import { motion } from "framer-motion";
 
 const VideoControls = ({
   viewMode,
@@ -11,8 +11,10 @@ const VideoControls = ({
   const transcribeDisabled = transcriptLoading || !activeVideoId;
 
   return (
-    <div className="flex gap-2 mb-4">
-      <button
+    <div className="flex gap-3 mb-6">
+      <motion.button
+        whileHover={!transcribeDisabled ? { scale: 1.02 } : {}}
+        whileTap={!transcribeDisabled ? { scale: 0.98 } : {}}
         type="button"
         onClick={() => {
           setViewMode("transcript");
@@ -20,41 +22,45 @@ const VideoControls = ({
         }}
         disabled={transcribeDisabled}
         aria-label="Show transcript"
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm ${
+        className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm min-w-[160px] ${
           viewMode === "transcript"
             ? "bg-indigo-600 text-white shadow-indigo-200"
             : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-        } ${transcribeDisabled ? "opacity-60 cursor-not-allowed" : "active:scale-95"}`}
+        } ${transcribeDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         <span>{transcriptLoading ? "⏳" : "📖"}</span>
-        {transcriptLoading ? "Transcribing..." : "Transcribe"}
-      </button>
+        <span>{transcriptLoading ? "Transcribing..." : "Transcribe"}</span>
+      </motion.button>
 
-      <button
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         type="button"
         onClick={() => setViewMode("summary")}
         aria-label="Show summary"
-        className={`px-3 py-2 rounded-lg transition-colors ${
+        className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors ${
           viewMode === "summary"
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-100 hover:bg-gray-200"
+            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
         }`}
       >
         ✨ Summarize
-      </button>
+      </motion.button>
 
-      <button
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         type="button"
         onClick={() => setViewMode("quiz")}
         aria-label="Start quiz"
-        className={`px-3 py-2 rounded-lg transition-colors ${
+        className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors ${
           viewMode === "quiz"
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-100 hover:bg-gray-200"
+            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
         }`}
       >
         🧠 Quizzify
-      </button>
+      </motion.button>
     </div>
   );
 };

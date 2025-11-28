@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { motion } from "framer-motion";
 
 const TranscriptBox = ({ transcript, loading }) => {
   const [copied, setCopied] = useState(false);
@@ -12,45 +13,62 @@ const TranscriptBox = ({ transcript, loading }) => {
   };
 
   return (
-    <div
-      className="p-4 border rounded-xl bg-white shadow-sm h-[24rem] flex flex-col relative group"
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 h-[28rem] flex flex-col relative group"
       role="log"
       aria-live="polite"
       tabIndex={0}
     >
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold text-gray-800">Transcript</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <span className="text-indigo-500">📖</span> Transcript
+        </h3>
         {transcript && !loading && (
           <button
             onClick={handleCopy}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
+            className="p-2 rounded-lg hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 transition-all active:scale-95"
             title="Copy to clipboard"
           >
-            {copied ? <Check size={18} className="text-green-600" /> : <Copy size={18} />}
+            {copied ? <Check size={20} className="text-green-600" /> : <Copy size={20} />}
           </button>
         )}
       </div>
       
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 animate-pulse">
-            <span className="text-3xl mb-2">⏳</span> 
-            <p>Fetching transcript...</p>
-            <p className="text-xs text-gray-400 mt-2">Trying multiple sources...</p>
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="text-4xl mb-4"
+            >
+              ⏳
+            </motion.div>
+            <p className="font-medium text-gray-600">Fetching transcript...</p>
+            <p className="text-xs text-gray-400 mt-2 bg-gray-50 px-3 py-1 rounded-full">Trying multiple sources...</p>
           </div>
         ) : transcript ? (
-          <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">
-            {transcript}
-          </pre>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed tracking-wide">
+              {transcript}
+            </pre>
+          </motion.div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <span className="text-3xl mb-2">📝</span>
-            <p>No transcript available.</p>
-            <p className="text-xs mt-1">Try another video or check back later.</p>
+            <span className="text-4xl mb-3 opacity-50">📝</span>
+            <p className="font-medium">No transcript available.</p>
+            <p className="text-xs mt-1 opacity-70">Try another video or check back later.</p>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
