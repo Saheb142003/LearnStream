@@ -2,13 +2,32 @@ import React from "react";
 
 const Predisplay = () => {
   return (
-    <div className="p-3 rounded-lg bg-gray-50">
-      <h3 className="font-semibold mb-2 underline">How to start:</h3>
-      <ul className="list-decimal pl-5 text-sm text-gray-700 space-y-1">
-        <li>Click 📖 Transcribe to generate transcript</li>
-        <li>Then click ✨ Summarize</li>
-        <li>Finally, click 🧠 Quizzify</li>
-      </ul>
+    <div className="p-6 rounded-xl bg-indigo-50 border border-indigo-100 h-full flex flex-col justify-center items-center text-center">
+      <h3 className="text-lg font-bold text-indigo-800 mb-4">🚀 Ready to Learn?</h3>
+      <div className="space-y-4 text-left max-w-xs">
+        <div className="flex items-start gap-3">
+          <span className="bg-white p-1.5 rounded-md shadow-sm text-lg">📖</span>
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">1. Transcribe</p>
+            <p className="text-xs text-gray-600">Get the full text of the video.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="bg-white p-1.5 rounded-md shadow-sm text-lg">✨</span>
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">2. Summarize</p>
+            <p className="text-xs text-gray-600">Get key points and insights.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="bg-white p-1.5 rounded-md shadow-sm text-lg">🧠</span>
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">3. Quizzify</p>
+            <p className="text-xs text-gray-600">Test your knowledge.</p>
+          </div>
+        </div>
+      </div>
+      <p className="mt-6 text-xs text-indigo-400 font-medium">Click "Transcribe" to start!</p>
     </div>
   );
 };

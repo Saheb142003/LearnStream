@@ -1,12 +1,126 @@
 // server/src/services/transcriptService.js
 import { YoutubeTranscript } from "youtube-transcript";
 import { runPython } from "../utils/runPython.js";
+import fetch from "node-fetch";
 
+// Simple memory cache with size limit to prevent leaks
+const CACHE_LIMIT = 100;
 const CACHE = new Map();
+
+// Cache for healthy instances
+let HEALTHY_INSTANCES = [];
+let LAST_INSTANCE_FETCH = 0;
+const INSTANCE_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+function getFromCache(key) {
+  return CACHE.get(key);
+}
+
+function setInCache(key, value) {
+  if (CACHE.size >= CACHE_LIMIT) {
+    const firstKey = CACHE.keys().next().value;
+    CACHE.delete(firstKey);
+  }
+  CACHE.set(key, value);
+}
+
+async function getHealthyInstances() {
+  const now = Date.now();
+  if (HEALTHY_INSTANCES.length > 0 && now - LAST_INSTANCE_FETCH < INSTANCE_CACHE_TTL) {
+    return HEALTHY_INSTANCES;
+  }
+
+  try {
+    const res = await fetch("https://api.invidious.io/instances.json?sort_by=health", { timeout: 3000 });
+    if (!res.ok) throw new Error("Failed to fetch instances");
+    
+    const data = await res.json();
+    const instances = data
+      .filter(item => {
+        const [domain, meta] = item;
+        return meta.type === "https"; // Relaxed filter: just HTTPS
+      })
+      .map(item => item[0])
+      .slice(0, 8); // Take top 8 healthy instances
+
+    if (instances.length > 0) {
+      HEALTHY_INSTANCES = instances;
+      LAST_INSTANCE_FETCH = now;
+      return instances;
+    }
+  } catch (e) {
+    console.error("Failed to update Invidious instances:", e.message);
+  }
+
+  // Fallback hardcoded list if API fails
+  if (HEALTHY_INSTANCES.length === 0) {
+    return [
+      "inv.nadeko.net",
+      "yewtu.be",
+      "inv.perditum.com",
+      "invidious.nerdvpn.de",
+      "invidious.f5.si",
+      "inv.tux.pizza",
+      "vid.puffyan.us"
+    ];
+  }
+  
+  return HEALTHY_INSTANCES;
+}
+
+async function fetchInvidiousTranscript(videoId) {
+  const instances = await getHealthyInstances();
+  
+  for (const domain of instances) {
+    const instance = `https://${domain}`;
+    try {
+      const url = `${instance}/api/v1/captions/${videoId}`;
+      const res = await fetch(url, { timeout: 5000 });
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const captions = data.captions || [];
+      if (captions.length === 0) continue;
+
+      // Prioritize English
+      const track = captions.find(c => c.languageCode === 'en') || captions[0];
+      const trackUrl = instance + track.url;
+
+      const trackRes = await fetch(trackUrl);
+      if (!trackRes.ok) continue;
+
+      const vttText = await trackRes.text();
+      
+      // Simple VTT parser
+      const lines = vttText.split('\n');
+      let text = "";
+      let seen = new Set();
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || line.includes('-->') || /^\d+$/.test(line) || line.startsWith('WEBVTT')) continue;
+        const cleanLine = line.replace(/<[^>]*>/g, '').trim();
+        if (cleanLine && !seen.has(cleanLine)) {
+          text += cleanLine + " ";
+          seen.add(cleanLine);
+        }
+      }
+      
+      return text.trim();
+
+    } catch (e) {
+      continue;
+    }
+  }
+  throw new Error("All Invidious instances failed.");
+}
 
 export async function fetchTranscriptText(videoId, lang = "en") {
   const key = `${videoId}:${lang}`;
-  if (CACHE.has(key)) return CACHE.get(key);
+  const cached = getFromCache(key);
+  if (cached) return cached;
+
+  let errors = [];
 
   // 1) Primary: node library
   try {
@@ -17,17 +131,16 @@ export async function fetchTranscriptText(videoId, lang = "en") {
         .join(" ")
         .replace(/\s+/g, " ")
         .trim();
-      CACHE.set(key, text);
+      setInCache(key, text);
       return text;
     }
   } catch (e) {
-    // swallow and try python fallback next
+    errors.push(`Node lib: ${e.message}`);
   }
 
-  // 2) Fallback: python youtube_transcript_api (very reliable)
+  // 2) Fallback: python youtube_transcript_api
   try {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    // Try multiple language preferences; you can pass req.query.langs="en,en-IN,hi"
     const langsCSV = process.env.TRANSCRIPT_LANGS || "en,en-US,en-GB,en-IN,hi";
     const { stdout } = await runPython("fetch_transcript.py", [url, langsCSV]);
 
@@ -35,25 +148,34 @@ export async function fetchTranscriptText(videoId, lang = "en") {
     try {
       data = JSON.parse(stdout);
     } catch (err) {
-      throw new Error(
-        "Transcript fetch failed (Python returned invalid JSON)."
-      );
+      throw new Error("Python returned invalid JSON");
     }
 
     if (Array.isArray(data) && data.length > 0) {
-      const text = data.join(" ").replace(/\s+/g, " ").trim();
-      CACHE.set(key, text);
+      const text = data
+        .map(item => item.text)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      setInCache(key, text);
       return text;
     }
-
-    if (data && data.error) {
-      throw new Error(data.error);
-    }
-
-    throw new Error("Transcript not available.");
+    if (data && data.error) throw new Error(data.error);
   } catch (err) {
-    // final error
-    const msg = err?.message || "Transcript not available.";
-    throw new Error(msg);
+    errors.push(`Python lib: ${err.message}`);
   }
+
+  // 3) Final Fallback: Invidious API (Dynamic)
+  try {
+    const text = await fetchInvidiousTranscript(videoId);
+    if (text) {
+      setInCache(key, text);
+      return text;
+    }
+  } catch (e) {
+    errors.push(`Invidious: ${e.message}`);
+  }
+
+  console.error(`Transcript fetch failed for ${videoId}. Errors:`, errors);
+  throw new Error("Transcript not available (all sources failed).");
 }

@@ -1,118 +1,117 @@
-# server/scripts/fetch_transcript.py
 import sys
 import json
-import re
-import requests
-import html
-import xml.etree.ElementTree as ET
-from urllib.parse import urlparse, parse_qs
+import random
+import time
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 
-try:
-    from youtube_transcript_api import (
-        YouTubeTranscriptApi,
-        TranscriptsDisabled,
-        NoTranscriptFound
-    )
-    HAVE_YTA = True
-except ImportError:
-    HAVE_YTA = False
+# List of free proxies (for demonstration - in production, use a paid proxy service)
+# Format: "http://user:pass@host:port" or "http://host:port"
+PROXIES = [
+    # Add your proxies here. 
+    # Example:
+    # "http://123.45.67.89:8080",
+]
 
-
-def _extract_video_id(url_or_id: str) -> str:
-    s = url_or_id.strip()
-    if re.fullmatch(r"[A-Za-z0-9_-]{11}", s):
-        return s
-    try:
-        u = urlparse(s)
-        if u.netloc.endswith("youtu.be"):
-            return u.path.strip("/")
-        if "v" in parse_qs(u.query):
-            return parse_qs(u.query)["v"][0]
-        if u.path.startswith("/embed/") or u.path.startswith("/shorts/"):
-            return u.path.split("/")[2]
-    except Exception:
-        pass
-    return s
-
-
-def _http_get(url, params=None, timeout=10):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/124 Safari/537.36"
+def get_proxy_dict(proxy_url):
+    if not proxy_url:
+        return None
+    return {
+        "http": proxy_url,
+        "https": proxy_url,
     }
-    return requests.get(url, params=params, headers=headers, timeout=timeout)
 
-
-def _parse_timedtext_xml(xml_text: str) -> str:
-    if not xml_text.strip():
-        return ""
+def fetch_transcript(video_id, languages=['en']):
+    # 1. Try without proxy first
     try:
-        root = ET.fromstring(xml_text)
-    except ET.ParseError:
-        return ""
-    lines = []
-    for elem in root.findall("text"):
-        t = (elem.text or "").replace("\n", " ").strip()
-        if t:
-            lines.append(html.unescape(t))
-    return " ".join(lines).strip()
-
-
-def fetch_timedtext_transcript(video_id: str) -> str:
-    base = "https://www.youtube.com/api/timedtext"
-
-    # 1) Try English manual/auto
-    for kind in ("", "asr"):
-        for code in ("en", "en-US", "en-GB", "en-IN"):
-            r = _http_get(base, params={"v": video_id, "lang": code, "kind": kind} if kind else {"v": video_id, "lang": code})
-            if r.status_code == 200:
-                txt = _parse_timedtext_xml(r.text)
-                if txt:
-                    return txt
-
-    # 2) Force-translate to English
-    for kind in ("", "asr"):
-        r = _http_get(base, params={"v": video_id, "kind": kind, "tlang": "en"} if kind else {"v": video_id, "tlang": "en"})
-        if r.status_code == 200:
-            txt = _parse_timedtext_xml(r.text)
-            if txt:
-                return txt
-
-    return ""
-
-
-def fetch_plain_english_transcript(video_id: str):
-    if HAVE_YTA:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # Try to find manually created transcript
         try:
-            transcript = None
+            transcript = transcript_list.find_manually_created_transcript(languages)
+        except NoTranscriptFound:
+            # Fallback to generated
             try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
+                transcript = transcript_list.find_generated_transcript(languages)
             except NoTranscriptFound:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en-US", "en-GB", "en-IN"])
+                 # If specific lang not found, get any english or the first available and translate
+                 # For now, just getting the first available
+                 transcript = transcript_list.find_transcript(languages)
 
-            if transcript:
-                full_text = " ".join([entry["text"] for entry in transcript])
-                if full_text.strip():
-                    return [full_text]
-        except (TranscriptsDisabled, NoTranscriptFound):
-            pass
-        except Exception:
-            pass
+        return transcript.fetch()
 
-    txt = fetch_timedtext_transcript(video_id)
-    if txt.strip():
-        return [txt]
+    except (TranscriptsDisabled, NoTranscriptFound) as e:
+        # Fatal errors that proxy won't fix
+        return {"error": str(e)}
+    except Exception as e:
+        # If rate limited or connection error, try proxies
+        print(f"Direct fetch failed: {e}, trying proxies...", file=sys.stderr)
+        pass
 
-    return []
+    # 2. Try with proxies
+    # Shuffle proxies to distribute load
+    random.shuffle(PROXIES)
+    
+    for proxy in PROXIES:
+        try:
+            # YouTubeTranscriptApi doesn't directly support proxies in the fetch method easily 
+            # without using the underlying requests session.
+            # However, the library uses `requests`. We can set environment variables 
+            # or use the proxies argument if exposed. 
+            # The current version of youtube_transcript_api allows passing proxies to `list_transcripts`?
+            # Actually, it supports `proxies` arg in `list_transcripts(video_id, proxies=...)`
+            
+            proxies_dict = get_proxy_dict(proxy)
+            
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies_dict)
+            
+            try:
+                transcript = transcript_list.find_manually_created_transcript(languages)
+            except NoTranscriptFound:
+                transcript = transcript_list.find_generated_transcript(languages)
+            
+            return transcript.fetch()
+            
+        except Exception as e:
+            # print(f"Proxy {proxy} failed: {e}", file=sys.stderr)
+            continue
 
+    return {"error": "Could not fetch transcript (all attempts failed)."}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print(json.dumps({"error": "No video URL provided"}))
+        print(json.dumps({"error": "Missing video URL or ID"}))
         sys.exit(1)
 
-    vid = _extract_video_id(sys.argv[1])
-    result = fetch_plain_english_transcript(vid)
+    input_str = sys.argv[1]
+    
+    # Extract ID from URL if needed
+    video_id = input_str
+    if "youtube.com" in input_str or "youtu.be" in input_str:
+        if "v=" in input_str:
+            video_id = input_str.split("v=")[1].split("&")[0]
+        else:
+            # handle youtu.be/ID
+            video_id = input_str.split("/")[-1].split("?")[0]
 
-    print(json.dumps(result, ensure_ascii=False))
+    langs = ['en']
+    if len(sys.argv) > 2:
+        langs = sys.argv[2].split(",")
+
+    try:
+        data = fetch_transcript(video_id, langs)
+        
+        # If it's a list (successful fetch), print it
+        if isinstance(data, list):
+             # Extract just the text to keep payload small if desired, 
+             # but the node service expects the full object or text?
+             # The node service expects text. Let's return the list of objects 
+             # and let node handle the joining to be safe, or just return text list.
+             # The node service does: JSON.parse(stdout) -> if Array -> join text.
+             # So returning the standard list of {text, start, duration} is perfect.
+             print(json.dumps(data))
+        else:
+             # Error dict
+             print(json.dumps(data))
+             
+    except Exception as e:
+        print(json.dumps({"error": str(e)}))

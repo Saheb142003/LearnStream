@@ -20,13 +20,14 @@ const VideoControls = ({
         }}
         disabled={transcribeDisabled}
         aria-label="Show transcript"
-        className={`px-3 py-2 rounded-lg transition-colors ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm ${
           viewMode === "transcript"
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-100 hover:bg-gray-200"
-        } ${transcribeDisabled ? "opacity-70 cursor-not-allowed" : ""}`}
+            ? "bg-indigo-600 text-white shadow-indigo-200"
+            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+        } ${transcribeDisabled ? "opacity-60 cursor-not-allowed" : "active:scale-95"}`}
       >
-        {transcriptLoading ? "⏳ Transcribing…" : "📖 Transcribe"}
+        <span>{transcriptLoading ? "⏳" : "📖"}</span>
+        {transcriptLoading ? "Transcribing..." : "Transcribe"}
       </button>
 
       <button
