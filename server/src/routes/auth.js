@@ -44,11 +44,28 @@ router.get("/login/failed", (req, res) => {
 });
 
 // Logout
-router.get("/logout", (req, res, next) => {
+router.post("/logout", (req, res, next) => {
+  const clearCookieAndSendResponse = () => {
+    res.clearCookie("connect.sid", { path: "/" });
+    res.status(200).json({ success: true, message: "Logged out successfully" });
+  };
+
+  const destroySession = () => {
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) console.error("Session destroy error:", err);
+        clearCookieAndSendResponse();
+      });
+    } else {
+      clearCookieAndSendResponse();
+    }
+  };
+
   req.logout(function (err) {
-    if (err) return next(err);
-    req.session = null; // Clear session
-    res.redirect(process.env.CLIENT_URL);
+    if (err) {
+      console.error("Passport logout error (ignoring):", err);
+    }
+    destroySession();
   });
 });
 

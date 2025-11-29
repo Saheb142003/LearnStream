@@ -45,9 +45,14 @@ export function AuthProvider({ children }) {
   };
 
   // 🔹 Logout
-  const signOut = () => {
-    window.location.href = "/auth/logout";
-    setUser(null);
+  const signOut = async () => {
+    try {
+      await axios.post(`${BASE_URL}/auth/logout`);
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
