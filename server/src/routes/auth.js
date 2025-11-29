@@ -27,6 +27,7 @@ router.get(
 
 // Login success
 router.get("/login/success", (req, res) => {
+  res.set("Cache-Control", "no-store"); // ⬅️ Prevent caching of auth state
   if (req.user) {
     const { _id, name, email, picture } = req.user;
     res.json({
@@ -46,7 +47,12 @@ router.get("/login/failed", (req, res) => {
 // Logout
 router.post("/logout", (req, res, next) => {
   const clearCookieAndSendResponse = () => {
-    res.clearCookie("connect.sid", { path: "/" });
+    res.clearCookie("connect.sid", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
     res.status(200).json({ success: true, message: "Logged out successfully" });
   };
 
