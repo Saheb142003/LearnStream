@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "connect-mongo": "^5.1.0",
     "cookie-session": "^2.1.1",
     "cors": "^2.8.5",

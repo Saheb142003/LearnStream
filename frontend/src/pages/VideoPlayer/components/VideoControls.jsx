@@ -5,10 +5,17 @@ const VideoControls = ({
   viewMode,
   setViewMode,
   onTranscribe,
+  onSummarize,
+  onQuizify,
   transcriptLoading,
+  summaryLoading,
+  quizLoading,
   activeVideoId,
+  hasTranscript,
 }) => {
   const transcribeDisabled = transcriptLoading || !activeVideoId;
+  const summaryDisabled = summaryLoading || !hasTranscript;
+  const quizDisabled = quizLoading || !hasTranscript;
 
   const buttons = [
     {
@@ -17,23 +24,29 @@ const VideoControls = ({
       icon: transcriptLoading ? "⏳" : "📖",
       onClick: () => {
         setViewMode("transcript");
-        if (onTranscribe && !transcribeDisabled) onTranscribe();
+        if (onTranscribe && !transcribeDisabled && !hasTranscript)
+          onTranscribe();
       },
       disabled: transcribeDisabled,
     },
     {
       id: "summary",
-      label: "Summarize",
-      icon: "✨",
-      onClick: () => setViewMode("summary"),
-      disabled: false,
+      label: summaryLoading ? "Summarizing..." : "Summarize",
+      icon: summaryLoading ? "⏳" : "✨",
+      onClick: () => {
+        if (onSummarize && !summaryDisabled) onSummarize();
+      },
+      disabled: summaryDisabled,
     },
     {
       id: "quiz",
       label: "Quiz",
       icon: "🧠",
-      onClick: () => setViewMode("quiz"),
-      disabled: false,
+      onClick: () => {
+        setViewMode("quiz");
+        // We let the QuizBox handle generation to allow difficulty selection
+      },
+      disabled: !hasTranscript,
     },
   ];
 

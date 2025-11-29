@@ -20,3 +20,6 @@ server/.env
 .DS_Store
 # Temporary files
 *.tmp
+
+# Ignore test scripts
+server/scripts/test_*.js

@@ -14,6 +14,7 @@ import TranscriptBox from "./components/TranscriptBox";
 import SummaryBox from "./components/SummaryBox";
 import QuizBox from "./components/QuizBox";
 import Predisplay from "./components/Predisplay";
+import SkeletonLoader from "../../components/SkeletonLoader";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 const AUTH_ROUTE = "/profile";
@@ -43,12 +44,23 @@ const Player = () => {
   const [transcript, setTranscript] = useState("");
   const [transcriptLoading, setTranscriptLoading] = useState(false);
 
+  // summary state
+  const [summary, setSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // quiz state
+  const [quiz, setQuiz] = useState([]);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizDifficulty, setQuizDifficulty] = useState("medium");
+
   // keep an AbortController so we can cancel previous requests
   const controllerRef = useRef(null);
 
   const embedUrl = useMemo(
     () =>
-      activeVideoId ? `https://www.youtube-nocookie.com/embed/${activeVideoId}` : "",
+      activeVideoId
+        ? `https://www.youtube-nocookie.com/embed/${activeVideoId}`
+        : "",
     [activeVideoId]
   );
 
@@ -99,6 +111,8 @@ const Player = () => {
         });
         setActiveVideoId(chosenVideo.videoId);
         setTranscript(""); // reset transcript
+        setSummary("");
+        setQuiz([]);
       } catch (e) {
         setErr(e.message);
       } finally {
@@ -114,23 +128,28 @@ const Player = () => {
     if (isYouTubeId(id)) {
       // Fetch video details from backend
       (async () => {
+        setLoading(true);
         try {
           // Set initial state
           setEntry({ title: "Loading title...", videoId: id });
           setActiveVideoId(id);
           setTranscript("");
+          setSummary("");
+          setQuiz([]);
 
           const res = await fetch(`${BASE_URL}/api/videos/${id}/details`);
           if (!res.ok) throw new Error("Failed to fetch details");
-          
+
           const data = await res.json();
-          setEntry({ 
-            title: data.title || "YouTube Video", 
-            videoId: id 
+          setEntry({
+            title: data.title || "YouTube Video",
+            videoId: id,
           });
         } catch (e) {
           console.error("Failed to fetch video title:", e);
           setEntry({ title: "YouTube Video", videoId: id });
+        } finally {
+          setLoading(false);
         }
       })();
       return;
@@ -202,15 +221,67 @@ const Player = () => {
     [activeVideoId, id, requestedVideoId, navigate]
   );
 
+  const handleSummarize = async () => {
+    if (!transcript) {
+      setErr("Please generate transcript first.");
+      return;
+    }
+    setViewMode("summary");
+    if (summary) return; // Already generated
+
+    setSummaryLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/ai/summarize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSummary(data.summary);
+    } catch (e) {
+      setErr(e.message || "Failed to generate summary");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const handleQuizify = async (difficulty = "medium") => {
+    if (!transcript) {
+      setErr("Please generate transcript first.");
+      return;
+    }
+    setViewMode("quiz");
+    setQuizDifficulty(difficulty);
+    // Always regenerate quiz if requested, or maybe check if already exists for this difficulty?
+    // For now let's allow regenerating
+    setQuizLoading(true);
+    setQuiz([]);
+    try {
+      const res = await fetch(`${BASE_URL}/api/ai/quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, difficulty }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setQuiz(data.quiz);
+    } catch (e) {
+      setErr(e.message || "Failed to generate quiz");
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] bg-gray-50 overflow-hidden">
       {/* Left: video area */}
       <div className="w-full lg:flex-1 flex flex-col shrink-0 lg:shrink bg-black lg:bg-transparent justify-center lg:justify-start p-0 lg:p-6 overflow-visible">
         <div className="w-full aspect-video bg-black lg:rounded-2xl shadow-lg overflow-hidden flex items-center justify-center relative z-50">
-          {embedUrl ? (
+          {loading ? (
+            <SkeletonLoader className="w-full h-full bg-gray-800" />
+          ) : embedUrl ? (
             <VideoFrame embedUrl={embedUrl} />
-          ) : loading ? (
-            <p className="text-gray-400 animate-pulse">⏳ Loading video…</p>
           ) : (
             <p className="text-gray-400">🎬 No video selected</p>
           )}
@@ -228,25 +299,33 @@ const Player = () => {
       <div className="flex-1 w-full lg:flex-none lg:w-[400px] xl:w-[450px] bg-white shadow-xl border-l border-gray-100 flex flex-col z-20 overflow-hidden">
         {/* Header / Controls */}
         <div className="p-3 lg:p-6 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-          {loading && <p className="text-gray-500 mb-2 text-sm">⏳ Loading…</p>}
           {err && (
             <div className="mb-3 p-3 text-sm rounded-lg bg-red-50 text-red-700 border border-red-200">
               {err}
             </div>
           )}
 
-          {embedUrl && !loading ? (
+          {loading ? (
+            <div className="flex gap-2">
+              <SkeletonLoader className="h-12 flex-1 rounded-xl" />
+              <SkeletonLoader className="h-12 flex-1 rounded-xl" />
+              <SkeletonLoader className="h-12 flex-1 rounded-xl" />
+            </div>
+          ) : embedUrl ? (
             <VideoControls
               viewMode={viewMode}
               setViewMode={setViewMode}
               onTranscribe={() => fetchTranscriptForActive()}
+              onSummarize={handleSummarize}
+              onQuizify={handleQuizify}
               transcriptLoading={transcriptLoading}
+              summaryLoading={summaryLoading}
+              quizLoading={quizLoading}
               activeVideoId={activeVideoId}
+              hasTranscript={!!transcript}
             />
           ) : (
-            !loading && (
-              <p className="text-gray-500 text-center py-4">No video loaded.</p>
-            )
+            <p className="text-gray-500 text-center py-4">No video loaded.</p>
           )}
         </div>
 
@@ -254,8 +333,8 @@ const Player = () => {
         <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar bg-gray-50/50">
           {embedUrl && !loading && (
             <AnimatePresence mode="wait">
-              {viewMode === "transcript" && (
-                !transcript && !transcriptLoading ? (
+              {viewMode === "transcript" &&
+                (!transcript && !transcriptLoading ? (
                   <Predisplay />
                 ) : (
                   <motion.div
@@ -271,8 +350,7 @@ const Player = () => {
                       transcript={transcript}
                     />
                   </motion.div>
-                )
-              )}
+                ))}
 
               {viewMode === "summary" && (
                 <motion.div
@@ -282,7 +360,7 @@ const Player = () => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <SummaryBox summary={""} />
+                  <SummaryBox summary={summary} loading={summaryLoading} />
                 </motion.div>
               )}
 
@@ -294,7 +372,11 @@ const Player = () => {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <QuizBox quiz={[]} />
+                  <QuizBox
+                    quiz={quiz}
+                    loading={quizLoading}
+                    onRetry={(diff) => handleQuizify(diff)}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -307,7 +389,9 @@ const Player = () => {
             onClick={() => navigate(-1)}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl shadow-sm border border-gray-200 hover:bg-gray-100 hover:text-indigo-600 transition-all duration-200"
           >
-            <span>⬅</span> <span className="hidden sm:inline">Back to Dashboard</span><span className="sm:hidden">Back</span>
+            <span>⬅</span>{" "}
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </button>
         </div>
       </div>
