@@ -7,7 +7,10 @@ const router = express.Router();
 // Google OAuth login request
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account", // ⬅️ Force account selection
+  })
 );
 
 // Google OAuth callback

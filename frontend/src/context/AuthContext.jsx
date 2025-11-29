@@ -52,6 +52,7 @@ export function AuthProvider({ children }) {
       console.error("Logout failed", error);
     } finally {
       setUser(null);
+      window.location.reload(); // ⬅️ Force reload to clear memory/cache
     }
   };
 
