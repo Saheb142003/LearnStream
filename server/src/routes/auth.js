@@ -7,10 +7,7 @@ const router = express.Router();
 // Google OAuth login request
 router.get(
   "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    prompt: "select_account", // ⬅️ Force account selection
-  })
+  passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 // Google OAuth callback
@@ -30,7 +27,6 @@ router.get(
 
 // Login success
 router.get("/login/success", (req, res) => {
-  res.set("Cache-Control", "no-store"); // ⬅️ Prevent caching of auth state
   if (req.user) {
     const { _id, name, email, picture } = req.user;
     res.json({
@@ -48,33 +44,11 @@ router.get("/login/failed", (req, res) => {
 });
 
 // Logout
-router.post("/logout", (req, res, next) => {
-  const clearCookieAndSendResponse = () => {
-    res.clearCookie("connect.sid", {
-      path: "/",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    });
-    res.status(200).json({ success: true, message: "Logged out successfully" });
-  };
-
-  const destroySession = () => {
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) console.error("Session destroy error:", err);
-        clearCookieAndSendResponse();
-      });
-    } else {
-      clearCookieAndSendResponse();
-    }
-  };
-
+router.get("/logout", (req, res, next) => {
   req.logout(function (err) {
-    if (err) {
-      console.error("Passport logout error (ignoring):", err);
-    }
-    destroySession();
+    if (err) return next(err);
+    req.session = null; // Clear session
+    res.redirect(process.env.CLIENT_URL);
   });
 });
 
