@@ -33,6 +33,31 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Tracking Data
+    stats: {
+      totalWatchTime: { type: Number, default: 0 }, // in seconds
+      totalQuizzesSolved: { type: Number, default: 0 },
+      topicsCleared: [{ type: String }],
+    },
+    dailyActivity: [
+      {
+        date: { type: String, required: true }, // Format: YYYY-MM-DD
+        watchTime: { type: Number, default: 0 }, // in seconds
+        appOpenTime: { type: Number, default: 0 }, // in seconds
+        videosWatched: [{ type: String }], // videoIds
+        loginCount: { type: Number, default: 0 },
+      },
+    ],
+    quizHistory: [
+      {
+        date: { type: Date, default: Date.now },
+        videoId: String,
+        videoTitle: String,
+        score: Number,
+        totalQuestions: Number,
+        difficulty: String,
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -40,6 +65,23 @@ const userSchema = new mongoose.Schema(
 // update last login time
 userSchema.methods.updateLoginTime = async function () {
   this.lastLogin = new Date();
+
+  // Also log daily login
+  const today = new Date().toISOString().split("T")[0];
+  let todayActivity = this.dailyActivity.find((a) => a.date === today);
+
+  if (todayActivity) {
+    todayActivity.loginCount += 1;
+  } else {
+    this.dailyActivity.push({
+      date: today,
+      loginCount: 1,
+      watchTime: 0,
+      appOpenTime: 0,
+      videosWatched: [],
+    });
+  }
+
   await this.save();
 };
 

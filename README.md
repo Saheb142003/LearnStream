@@ -1,164 +1,156 @@
-# LearnStream
+# LearnStream - AI-Powered Learning Platform
 
-**LearnStream** is a full-stack web application for organizing, managing, and tracking online learning playlists, built with the **MERN stack**. It provides a modern and intuitive way to manage YouTube playlists, track video durations, and maintain personalized learning dashboards.
+![LearnStream Home](/frontend/assets/Home.JPG)
 
-🔗 **Live App**: [learnstream.netlify.app](https://learnstream.netlify.app)
+<div align="center">
 
----
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
+![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 
-## 📑 Table of Contents
+</div>
 
-- [Overview](#overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Project Structure](#project-structure)
-- [Screenshots](#screenshots)
-- [Contribution Guidelines](#contribution-guidelines)
-- [License](#license)
-- [Author](#author)
+<br />
 
----
+**LearnStream** is a modern, AI-enhanced video learning platform designed to transform how you consume educational content. By integrating advanced AI capabilities directly into the video experience, LearnStream helps you learn faster, retain more, and track your progress effectively.
 
-## 📖 Overview
-
-LearnStream enables users to **build custom learning paths** using YouTube playlists.  
-Users can log in with Google, add playlists, view total durations, and track learning progress with ease.
+### 🔗 [Live Demo](https://learnstream.netlify.app)
 
 ---
 
-## ✨ Features
+## 🚀 Key Features
 
-- 🎥 **YouTube Playlist Integration** – Add and fetch playlists with metadata & thumbnails.
-- ⏳ **Video Duration Calculation** – Get total and per-video durations in H/M/S format.
-- 🔐 **User Authentication** – Secure login/signup via Google OAuth.
-- 📊 **Personal Dashboard** – Manage playlists and progress individually.
-- 📱 **Responsive Frontend** – Built with **Vite + React** and styled using **Tailwind CSS**.
-- 🗄️ **Real-Time Database** – MongoDB stores users, playlists, and video data.
-- 🌐 **RESTful API** – Express.js backend with CRUD endpoints.
-- ⚡ **Robust Error Handling** – Clear backend validation & error feedback.
+### 🧠 AI-Powered Learning Tools
 
----
+- **Instant Summaries**: Get concise, AI-generated summaries of any video to grasp key concepts in seconds using Google Gemini.
+- **Interactive Quizzes**: Test your knowledge with auto-generated quizzes based on video content.
+- **Smart Transcripts**: Follow along with synchronized transcripts for better accessibility and note-taking.
 
-## 🛠️ Technology Stack
+### 📊 Comprehensive Dashboard
 
-| Layer    | Technology                           |
-| -------- | ------------------------------------ |
-| Frontend | React, Vite, Tailwind CSS            |
-| Backend  | Node.js, Express.js                  |
-| Database | MongoDB (Mongoose)                   |
-| Auth     | Google OAuth                         |
-| APIs     | YouTube Data API                     |
-| Other    | JavaScript, Python (utility scripts) |
+- **Activity Tracking**: Monitor your daily watch time, app usage, and learning streaks.
+- **Progress Visualization**: Visualize your learning habits with interactive charts.
+- **Quiz History**: Keep track of your quiz scores and identify areas for improvement.
+
+### 📺 Intelligent Feed & Player
+
+- **Mixed Content Feed**: Discover both individual videos and curated playlists in a seamless, infinite-scroll feed.
+- **Smart Search**: Find content instantly with optimized, debounced search.
+- **Distraction-Free Player**: Focus on learning with a clean, theater-mode player interface.
+
+![LearnStream Feed](/frontend/assets/Feed.JPG)
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Tech Stack
 
-### ✅ Prerequisites
+| Category      | Technologies                                                     |
+| ------------- | ---------------------------------------------------------------- |
+| **Frontend**  | React, Vite, Tailwind CSS, Framer Motion, Recharts, Lucide React |
+| **Backend**   | Node.js, Express, MongoDB, Mongoose                              |
+| **AI & Data** | Google Gemini API, YouTube Transcript API, Python (Scripting)    |
+| **Auth**      | Passport.js (Google OAuth 2.0)                                   |
+| **DevOps**    | Docker (Optional), Render/Netlify (Deployment)                   |
 
-- **Node.js** ≥ 16.x
-- **MongoDB** (Atlas or local)
-- **Google OAuth credentials**
-- **YouTube API key**
+---
 
-### ⚙️ Installation
+## 📦 Installation & Setup
+
+### Prerequisites
+
+- **Node.js** (v18+ recommended)
+- **MongoDB** (Local or Atlas URI)
+- **Python** (Required for some transcript fetching fallbacks)
+- **Google Cloud Console Project** (For OAuth and Gemini API)
+
+### 1. Clone the Repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/Saheb142003/LearnStream.git
 cd LearnStream
+```
 
-# Install backend dependencies
+### 2. Backend Setup
+
+Navigate to the server directory and install dependencies:
+
+```bash
+cd server
 npm install
+```
 
-# Install frontend dependencies
-cd client
+Create a `.env` file in the `server` directory with the following variables:
+
+```env
+PORT=8000
+SERVER_URL=http://localhost:8000
+CLIENT_URL=http://localhost:5173
+MONGO_URI=your_mongodb_connection_string
+SESSION_SECRET=your_session_secret_key
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+SUMMARY_API_KEY=your_gemini_api_key
+QUIZ_API_KEY=your_gemini_api_key
+PYTHON_BIN=python
+TRANSCRIPT_LANGS=en,en-US,en-GB,en-IN,hi
+```
+
+### 3. Frontend Setup
+
+Navigate to the frontend directory and install dependencies:
+
+```bash
+cd ../frontend
 npm install
+```
 
-# Configure environment variables (see .env.example for details)
+Create a `.env` file in the `frontend` directory:
 
-# Start the backend server
-npm run server
+```env
+VITE_API_URL=http://localhost:8000
+VITE_SERVER_URL=http://localhost:8000
+```
 
-# Start the frontend (in another terminal)
+---
+
+## 🏃‍♂️ Running the Application
+
+### Development Mode
+
+You need to run both the backend and frontend servers.
+
+**Terminal 1 (Backend):**
+
+```bash
+cd server
+npm start
+```
+
+_Server runs on http://localhost:8000_
+
+**Terminal 2 (Frontend):**
+
+```bash
+cd frontend
 npm run dev
 ```
 
----
-
-## 🔑 Environment Variables
-
-Create `.env` files for both frontend and backend.
-
-```env
-# Frontend
-REACT_APP_YOUTUBE_API_KEY=your_youtube_api_key
-REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
-
-# Backend
-MONGODB_URI=your_mongodb_connection_string
-```
-
-Refer to `.env.example` if provided.
+_Frontend runs on http://localhost:5173_
 
 ---
 
-## 📂 Project Structure
+## 🤝 Contributing
 
-```
-LearnStream/
-│
-├── backend/
-│   ├── models/
-│   ├── routes/
-│   ├── controllers/
-│   ├── middleware/
-│   └── server.js
-│
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── App.jsx
-│   │   └── index.js
-│   └── vite.config.js
-│
-├── package.json
-├── README.md
-├── .env.example
-```
+Contributions are always welcome!
 
----
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📸 Screenshots
+## 📄 License
 
-### 🎥 Home View
-
-![Home View](./frontend/assets/Home.JPG)
-
-### 🎥 Feed View
-
-![Feed View](./frontend/assets/Feed.JPG)
-
----
-
-## 🤝 Contribution Guidelines
-
-- 🍴 Fork the repo and create a branch for each feature/bugfix.
-- 📝 Follow consistent code style & write clear commit messages.
-- 🔀 Submit PRs with a detailed description of changes.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License**.
-
----
-
-## 👨‍💻 Author
-
-Developed by **Saheb Ansari**  
-_BTech CSE '26_
+This project is licensed under the MIT License.

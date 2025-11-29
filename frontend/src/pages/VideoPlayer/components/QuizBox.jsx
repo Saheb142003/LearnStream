@@ -4,7 +4,7 @@ import React from "react";
 import { useState } from "react";
 import { Check, X, RefreshCw } from "lucide-react";
 
-const QuizBox = ({ quiz, loading, onRetry }) => {
+const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
   const [difficulty, setDifficulty] = useState("medium");
   const [answers, setAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
@@ -16,6 +16,13 @@ const QuizBox = ({ quiz, loading, onRetry }) => {
 
   const checkAnswers = () => {
     setShowResults(true);
+    const score = quiz.reduce((acc, q, i) => {
+      return acc + (answers[i] === q.correctAnswer ? 1 : 0);
+    }, 0);
+
+    if (onQuizComplete) {
+      onQuizComplete(score, quiz.length, difficulty);
+    }
   };
 
   const resetQuiz = () => {

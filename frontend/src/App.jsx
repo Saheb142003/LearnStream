@@ -1,5 +1,6 @@
 // frontend/src/App.jsx
 import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import Header from "./components/header/Header";
 import Navbar from "./components/navbar/Navbar";
 import Profile from "./pages/Profile/Profile";
@@ -12,7 +13,23 @@ import Learning from "./pages/MyLearning/Learning";
 import VideoPlayer from "./pages/Playlist/VideoPlayer";
 import Player from "./pages/VideoPlayer/Player"; // <-- new fancy player
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 export default function App() {
+  // Global App Tracking: Track app open time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch(`${BASE_URL}/api/user/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appOpenTime: 60 }),
+        credentials: "include",
+      }).catch(() => {}); // Fail silently if not logged in
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />

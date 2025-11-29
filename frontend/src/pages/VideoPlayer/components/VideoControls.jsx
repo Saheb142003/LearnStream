@@ -1,21 +1,22 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 
 const VideoControls = ({
   viewMode,
   setViewMode,
   onTranscribe,
   onSummarize,
-  onQuizify,
+
   transcriptLoading,
   summaryLoading,
   quizLoading,
   activeVideoId,
   hasTranscript,
+  onQuizify, // eslint-disable-line no-unused-vars
 }) => {
   const transcribeDisabled = transcriptLoading || !activeVideoId;
   const summaryDisabled = summaryLoading || !hasTranscript;
-  const quizDisabled = quizLoading || !hasTranscript;
+  // const quizDisabled = quizLoading || !hasTranscript; // Unused variable removed
 
   const buttons = [
     {
@@ -40,8 +41,8 @@ const VideoControls = ({
     },
     {
       id: "quiz",
-      label: "Quiz",
-      icon: "🧠",
+      label: quizLoading ? "Generating..." : "Quiz",
+      icon: quizLoading ? "⏳" : "🧠",
       onClick: () => {
         setViewMode("quiz");
         // We let the QuizBox handle generation to allow difficulty selection

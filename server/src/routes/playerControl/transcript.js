@@ -1,5 +1,5 @@
 import express from "express";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 import { fetchTranscriptText } from "../../services/transcriptService.js";
 
 const router = express.Router();

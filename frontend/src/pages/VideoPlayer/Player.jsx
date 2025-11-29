@@ -6,7 +6,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import VideoFrame from "./components/VideoFrame";
 import VideoControls from "./components/VideoControls";
@@ -51,7 +51,6 @@ const Player = () => {
   // quiz state
   const [quiz, setQuiz] = useState([]);
   const [quizLoading, setQuizLoading] = useState(false);
-  const [quizDifficulty, setQuizDifficulty] = useState("medium");
 
   // keep an AbortController so we can cancel previous requests
   const controllerRef = useRef(null);
@@ -158,6 +157,51 @@ const Player = () => {
     setErr("❌ Invalid player id in URL.");
   }, [id, requestedVideoId, navigate]);
 
+  // Tracking Logic
+  useEffect(() => {
+    if (!activeVideoId || loading) return;
+
+    // Track initial video view
+    fetch(`${BASE_URL}/api/user/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId: activeVideoId, appOpenTime: 0 }),
+      credentials: "include",
+    }).catch(console.error);
+
+    // Interval to track watch time (every 30 seconds)
+    const interval = setInterval(() => {
+      fetch(`${BASE_URL}/api/user/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watchTime: 30 }),
+        credentials: "include",
+      }).catch(console.error);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [activeVideoId, loading]);
+
+  const handleQuizComplete = async (score, totalQuestions, difficulty) => {
+    try {
+      await fetch(`${BASE_URL}/api/user/quiz-result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId: activeVideoId,
+          videoTitle: entry?.title || "Unknown Video",
+          score,
+          totalQuestions,
+          difficulty,
+          topics: [entry?.title || "General"], // Use video title as the topic cleared
+        }),
+        credentials: "include",
+      });
+    } catch (e) {
+      console.error("Failed to save quiz result:", e);
+    }
+  };
+
   // fetch transcript (abortable, handles 401, 404, friendly messages)
   const fetchTranscriptForActive = useCallback(
     async (opts = {}) => {
@@ -227,7 +271,7 @@ const Player = () => {
       return;
     }
     setViewMode("summary");
-    if (summary) return; // Already generated
+    // if (summary) return; // Allow regeneration
 
     setSummaryLoading(true);
     try {
@@ -252,7 +296,7 @@ const Player = () => {
       return;
     }
     setViewMode("quiz");
-    setQuizDifficulty(difficulty);
+
     // Always regenerate quiz if requested, or maybe check if already exists for this difficulty?
     // For now let's allow regenerating
     setQuizLoading(true);
@@ -376,6 +420,7 @@ const Player = () => {
                     quiz={quiz}
                     loading={quizLoading}
                     onRetry={(diff) => handleQuizify(diff)}
+                    onQuizComplete={handleQuizComplete}
                   />
                 </motion.div>
               )}

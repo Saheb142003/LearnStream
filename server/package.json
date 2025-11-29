@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "@google/generative-ai": "^0.24.1",
     "connect-mongo": "^5.1.0",
     "cookie-session": "^2.1.1",
@@ -25,7 +26,6 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "process": "^0.11.10",
-    "youtube-transcript": "^1.2.1",
-    "ytdl-core": "^4.11.5"
+    "youtube-transcript": "^1.2.1"
   }
 }

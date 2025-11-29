@@ -66,15 +66,44 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // Build video entries with uploader metadata
-    const allVideos = [];
+    // Build mixed entries
+    const allItems = [];
+
     playlists.forEach((playlist) => {
       const uploader = playlist.user || {};
       const uploaderIdStr = String(uploader._id || "");
       const uploaderName = uploader.name || "Unknown";
       const uploaderAvatar = uploader.avatar || null;
+      const pVideos = playlist.videos || [];
 
-      (playlist.videos || []).forEach((video) => {
+      // 1. Add the Playlist itself as an item (if it has videos)
+      if (pVideos.length > 0 && !playlist.isSingleVideo) {
+        // Find a valid thumbnail from the first valid video
+        const firstValid = pVideos.find(
+          (v) => v && v.videoId && v.videoId.length === 11
+        );
+        const thumb = firstValid
+          ? firstValid.thumbnailUrl ||
+            `https://img.youtube.com/vi/${firstValid.videoId}/hqdefault.jpg`
+          : "https://via.placeholder.com/320x180?text=Playlist";
+
+        allItems.push({
+          type: "playlist",
+          playlistId: playlist._id,
+          title: playlist.title,
+          videoCount: pVideos.length,
+          thumbnailUrl: thumb,
+          uploaderId: uploaderIdStr,
+          uploaderName,
+          uploaderAvatar,
+          addedAt: playlist.createdAt,
+          // For sorting/filtering
+          playlistTitle: playlist.title,
+        });
+      }
+
+      // 2. Add individual videos
+      pVideos.forEach((video) => {
         if (
           video &&
           video.videoId &&
@@ -83,7 +112,8 @@ router.get("/", async (req, res) => {
           !/^deleted video$/i.test(video.title) &&
           video.videoId.length === 11
         ) {
-          allVideos.push({
+          allItems.push({
+            type: "video",
             videoId: video.videoId,
             title: video.title,
             duration: video.duration || null,
@@ -102,16 +132,15 @@ router.get("/", async (req, res) => {
       });
     });
 
-    // No current user (public feed) → treat all videos as "other"
-    let filteredVideos = allVideos;
-
+    // Filter
+    let filteredItems = allItems;
     if (search && search.trim()) {
       const s = search.toLowerCase();
-      filteredVideos = filteredVideos.filter(
-        (v) =>
-          v.title.toLowerCase().includes(s) ||
-          (v.playlistTitle || "").toLowerCase().includes(s) ||
-          (v.uploaderName || "").toLowerCase().includes(s)
+      filteredItems = filteredItems.filter(
+        (item) =>
+          item.title.toLowerCase().includes(s) ||
+          (item.playlistTitle || "").toLowerCase().includes(s) ||
+          (item.uploaderName || "").toLowerCase().includes(s)
       );
     }
 
@@ -120,6 +149,8 @@ router.get("/", async (req, res) => {
       if (sortKey === "random") return shuffleWithRng(arr, rng);
       if (sortKey === "title")
         return arr.sort((a, b) => a.title.localeCompare(b.title));
+      // For duration, playlists don't really have one, so treat as 0 or sum?
+      // Let's just keep duration sort for videos mostly, push playlists to end or treat as 0
       if (sortKey === "duration")
         return arr.sort(
           (a, b) => parseDuration(b.duration) - parseDuration(a.duration)
@@ -131,19 +162,19 @@ router.get("/", async (req, res) => {
       return arr.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
     };
 
-    const sortedVideos = applySort(filteredVideos.slice(), sort);
+    const sortedItems = applySort(filteredItems.slice(), sort);
 
     // Lightweight neighbor swaps for variety
-    const swaps = Math.max(0, Math.floor(sortedVideos.length * 0.02));
+    const swaps = Math.max(0, Math.floor(sortedItems.length * 0.02));
     for (let s = 0; s < swaps; s++) {
-      const i = Math.floor(rng() * sortedVideos.length);
-      const j = Math.floor(rng() * sortedVideos.length);
-      [sortedVideos[i], sortedVideos[j]] = [sortedVideos[j], sortedVideos[i]];
+      const i = Math.floor(rng() * sortedItems.length);
+      const j = Math.floor(rng() * sortedItems.length);
+      [sortedItems[i], sortedItems[j]] = [sortedItems[j], sortedItems[i]];
     }
 
     // Pagination
-    const total = sortedVideos.length;
-    const paginated = sortedVideos.slice(offsetNum, offsetNum + limitNum);
+    const total = sortedItems.length;
+    const paginated = sortedItems.slice(offsetNum, offsetNum + limitNum);
     const hasMore = offsetNum + limitNum < total;
 
     res.json({

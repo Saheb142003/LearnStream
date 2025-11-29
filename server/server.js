@@ -17,6 +17,7 @@ import feedRoutes from "./src/routes/feed.js";
 
 import videosRouter from "./src/routes/playerControl/transcript.js";
 import aiRoutes from "./src/routes/aiRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use("/api/feed", feedRoutes);
 // Player Contorls
 app.use("/api/videos", videosRouter);
 app.use("/api/ai", aiRoutes);
+app.use("/api/user", userRoutes);
 
 // Optional protected test route
 app.get("/private", (req, res) => {

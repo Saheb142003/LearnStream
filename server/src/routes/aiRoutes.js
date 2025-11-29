@@ -95,7 +95,7 @@ router.post("/quiz", async (req, res) => {
       generationConfig: { responseMimeType: "application/json" },
     });
 
-    const prompt = `You are a quiz generator. Generate 5 multiple-choice questions based on the transcript provided below.
+    const prompt = `You are a quiz generator. Generate 5 multiple-choice questions based on the summary provided below.
     
     Difficulty Level: ${difficulty}
     
