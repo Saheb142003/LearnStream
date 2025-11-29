@@ -1,5 +1,5 @@
-// server/src/routes/playerControl/transcript.js
 import express from "express";
+import ytdl from "ytdl-core";
 import { fetchTranscriptText } from "../../services/transcriptService.js";
 
 const router = express.Router();
@@ -43,6 +43,37 @@ router.get("/:videoId/transcript", async (req, res) => {
     // Default to 500 for unexpected issues
     return res.status(500).json({
       error: "Internal server error while fetching transcript.",
+      details: e.message,
+    });
+  }
+});
+
+/**
+ * GET /api/videos/:videoId/details
+ * Response: { videoId, title, author, lengthSeconds, thumbnails }
+ */
+router.get("/:videoId/details", async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!isYouTubeId(videoId)) {
+    return res.status(400).json({ error: "Invalid YouTube videoId." });
+  }
+
+  try {
+    const info = await ytdl.getBasicInfo(videoId);
+    const details = info.videoDetails;
+
+    return res.json({
+      videoId,
+      title: details.title,
+      author: details.author.name,
+      lengthSeconds: details.lengthSeconds,
+      thumbnails: details.thumbnails,
+    });
+  } catch (e) {
+    console.error("Video details fetch error:", e);
+    return res.status(500).json({
+      error: "Failed to fetch video details",
       details: e.message,
     });
   }

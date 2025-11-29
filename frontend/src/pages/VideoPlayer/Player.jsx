@@ -48,7 +48,7 @@ const Player = () => {
 
   const embedUrl = useMemo(
     () =>
-      activeVideoId ? `https://www.youtube.com/embed/${activeVideoId}` : "",
+      activeVideoId ? `https://www.youtube-nocookie.com/embed/${activeVideoId}` : "",
     [activeVideoId]
   );
 
@@ -112,9 +112,27 @@ const Player = () => {
     }
 
     if (isYouTubeId(id)) {
-      setEntry({ title: "YouTube Video", videoId: id });
-      setActiveVideoId(id);
-      setTranscript("");
+      // Fetch video details from backend
+      (async () => {
+        try {
+          // Set initial state
+          setEntry({ title: "Loading title...", videoId: id });
+          setActiveVideoId(id);
+          setTranscript("");
+
+          const res = await fetch(`${BASE_URL}/api/videos/${id}/details`);
+          if (!res.ok) throw new Error("Failed to fetch details");
+          
+          const data = await res.json();
+          setEntry({ 
+            title: data.title || "YouTube Video", 
+            videoId: id 
+          });
+        } catch (e) {
+          console.error("Failed to fetch video title:", e);
+          setEntry({ title: "YouTube Video", videoId: id });
+        }
+      })();
       return;
     }
 
@@ -185,36 +203,39 @@ const Player = () => {
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[calc(100vh-140px)] bg-gray-50">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] bg-gray-50 overflow-hidden">
       {/* Left: video area */}
-      <div className="flex-1 flex flex-col p-6">
-        <div className="flex-1 flex items-center justify-center bg-black rounded-2xl shadow-lg overflow-hidden">
+      <div className="w-full lg:flex-1 flex flex-col shrink-0 lg:shrink bg-black lg:bg-transparent justify-center lg:justify-start p-0 lg:p-6 overflow-visible">
+        <div className="w-full aspect-video bg-black lg:rounded-2xl shadow-lg overflow-hidden flex items-center justify-center relative z-50">
           {embedUrl ? (
             <VideoFrame embedUrl={embedUrl} />
           ) : loading ? (
-            <p className="text-gray-400">⏳ Loading video…</p>
+            <p className="text-gray-400 animate-pulse">⏳ Loading video…</p>
           ) : (
             <p className="text-gray-400">🎬 No video selected</p>
           )}
         </div>
         {entry && (
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-indigo-700">{entry.title}</h2>
+          <div className="p-4 lg:p-0 lg:mt-4 bg-white lg:bg-transparent border-b lg:border-none border-gray-100">
+            <h2 className="text-lg lg:text-2xl font-bold text-gray-800 leading-tight line-clamp-2">
+              {entry.title}
+            </h2>
           </div>
         )}
       </div>
 
       {/* Right: tools */}
-      <div className="w-full md:w-10/35 bg-white shadow-xl p-6 border-l flex flex-col">
-        {loading && <p className="text-gray-500 mb-2">⏳ Loading…</p>}
-        {err && (
-          <div className="mb-3 p-3 text-sm rounded bg-red-50 text-red-700 border border-red-200">
-            {err}
-          </div>
-        )}
+      <div className="flex-1 w-full lg:flex-none lg:w-[400px] xl:w-[450px] bg-white shadow-xl border-l border-gray-100 flex flex-col z-20 overflow-hidden">
+        {/* Header / Controls */}
+        <div className="p-3 lg:p-6 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+          {loading && <p className="text-gray-500 mb-2 text-sm">⏳ Loading…</p>}
+          {err && (
+            <div className="mb-3 p-3 text-sm rounded-lg bg-red-50 text-red-700 border border-red-200">
+              {err}
+            </div>
+          )}
 
-        {embedUrl && !loading ? (
-          <>
+          {embedUrl && !loading ? (
             <VideoControls
               viewMode={viewMode}
               setViewMode={setViewMode}
@@ -222,14 +243,35 @@ const Player = () => {
               transcriptLoading={transcriptLoading}
               activeVideoId={activeVideoId}
             />
+          ) : (
+            !loading && (
+              <p className="text-gray-500 text-center py-4">No video loaded.</p>
+            )
+          )}
+        </div>
 
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar bg-gray-50/50">
+          {embedUrl && !loading && (
             <AnimatePresence mode="wait">
               {viewMode === "transcript" && (
-                <TranscriptBox
-                  key="transcript"
-                  loading={transcriptLoading}
-                  transcript={transcript || <Predisplay />}
-                />
+                !transcript && !transcriptLoading ? (
+                  <Predisplay />
+                ) : (
+                  <motion.div
+                    key="transcript"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full"
+                  >
+                    <TranscriptBox
+                      loading={transcriptLoading}
+                      transcript={transcript}
+                    />
+                  </motion.div>
+                )
               )}
 
               {viewMode === "summary" && (
@@ -256,17 +298,16 @@ const Player = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </>
-        ) : (
-          !loading && <p className="text-gray-500">No video loaded.</p>
-        )}
+          )}
+        </div>
 
-        <div className="mt-6">
+        {/* Footer / Back Button */}
+        <div className="p-3 lg:p-4 border-t border-gray-100 bg-white">
           <button
             onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl shadow-sm border border-gray-200 hover:bg-gray-100 hover:text-indigo-600 transition-all duration-200"
           >
-            ⬅ Back
+            <span>⬅</span> <span className="hidden sm:inline">Back to Dashboard</span><span className="sm:hidden">Back</span>
           </button>
         </div>
       </div>

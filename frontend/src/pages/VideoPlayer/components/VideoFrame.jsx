@@ -13,10 +13,10 @@ const VideoFrame = ({ embedUrl }) => {
   return (
     <iframe
       width="100%"
-      height="400"
-      src={embedUrl}
+      height="100%"
+      src={`${embedUrl}?rel=0&modestbranding=1&playsinline=1`}
       title="YouTube video player"
-      className="rounded-xl shadow-lg"
+      className="w-full h-full rounded-xl shadow-lg"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
       allowFullScreen
       loading="lazy" // this uses in new commit

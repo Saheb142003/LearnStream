@@ -2,7 +2,7 @@ import React from "react";
 
 const Predisplay = () => {
   return (
-    <div className="p-6 rounded-xl bg-indigo-50 border border-indigo-100 h-full flex flex-col justify-center items-center text-center">
+    <div className="hidden lg:flex p-6 rounded-xl bg-indigo-50 border border-indigo-100 h-full flex-col justify-center items-center text-center">
       <h3 className="text-lg font-bold text-indigo-800 mb-4">🚀 Ready to Learn?</h3>
       <div className="space-y-4 text-left max-w-xs">
         <div className="flex items-start gap-3">

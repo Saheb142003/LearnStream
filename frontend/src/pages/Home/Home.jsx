@@ -1,11 +1,21 @@
 /* eslint-disable no-unused-vars */
 // frontend/src/pages/Home/Home.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
+import { 
+  Play, 
+  FileText, 
+  BrainCircuit, 
+  ArrowRight, 
+  Clipboard, 
+  X,
+  Youtube,
+  Sparkles
+} from "lucide-react";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
-const AUTH_ROUTE = "/profile"; // where we send users to sign in
+const AUTH_ROUTE = "/profile";
 
 function isYouTubeUrl(value) {
   if (!value) return false;
@@ -15,6 +25,29 @@ function isYouTubeUrl(value) {
   );
 }
 
+// 3D Card Component (Light Theme)
+const FeatureCard = ({ icon: Icon, title, desc, delay }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay }}
+      whileHover={{ y: -10, rotateX: 5, rotateY: 5 }}
+      className="group relative p-8 rounded-3xl bg-white border border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative z-10">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform duration-300">
+          <Icon className="w-7 h-7 text-white" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3">{title}</h3>
+        <p className="text-gray-600 leading-relaxed">{desc}</p>
+      </div>
+    </motion.div>
+  );
+};
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,6 +55,11 @@ export default function Home() {
   const [info, setInfo] = useState("");
   const navigate = useNavigate();
   const abortRef = useRef(null);
+  const { scrollY } = useScroll();
+  
+  // Parallax effects
+  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  const y2 = useTransform(scrollY, [0, 500], [0, -150]);
 
   useEffect(() => {
     return () => {
@@ -34,7 +72,6 @@ export default function Home() {
       const text = await navigator.clipboard.readText();
       if (text) setUrl(text);
     } catch (e) {
-      // Clipboard might not be available in some contexts — ignore silently
       console.warn("Clipboard unavailable", e);
     }
   };
@@ -70,17 +107,13 @@ export default function Home() {
         });
 
         if (res.status === 401) {
-          // preserve pending action and send user to auth flow
           try {
             sessionStorage.setItem(
               "afterAuthRedirect",
               JSON.stringify({ type: "player", url: trimmed })
             );
           } catch (e) {
-            console.warn(
-              "Could not save pending redirect to sessionStorage",
-              e
-            );
+            console.warn("Could not save pending redirect", e);
           }
 
           navigate(AUTH_ROUTE, {
@@ -94,15 +127,10 @@ export default function Home() {
         let data = {};
         if (contentType.includes("application/json")) {
           data = await res.json();
-        } else {
-          // server returned non-JSON (HTML error page etc.) — handle gracefully
-          data = {};
         }
 
         if (!res.ok) {
-          throw new Error(
-            data.message || `Server responded with ${res.status}`
-          );
+          throw new Error(data.message || `Server responded with ${res.status}`);
         }
 
         const id = data._id ?? data.id ?? data.playlistId;
@@ -110,10 +138,7 @@ export default function Home() {
 
         navigate(`/player/${id}`);
       } catch (err) {
-        if (err.name === "AbortError") {
-          console.info("Request aborted");
-          return;
-        }
+        if (err.name === "AbortError") return;
         setErr(err.message || "Failed to add playlist.");
       } finally {
         setLoading(false);
@@ -123,168 +148,194 @@ export default function Home() {
     [url, navigate]
   );
 
-  const sampleUrls = [
-    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "https://www.youtube.com/playlist?list=PL9tY0BWXOZFtN3G9Qx1qV7Q1q2N7w4a1c",
-  ];
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-300 text-white px-6">
+    <div className="min-h-screen bg-gray-50 text-gray-900 selection:bg-indigo-100 overflow-x-hidden font-sans">
+      {/* Background Gradients (Light) */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-[120px]" />
+      </div>
+
       {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-center max-w-3xl"
-      >
-        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 drop-shadow-lg">
-          Welcome to <span className="text-yellow-300">LearnStream 🎓</span>
-        </h1>
-
-        <p className="text-lg md:text-xl mb-8 opacity-90 leading-relaxed">
-          Turn your <span className="font-semibold">YouTube videos</span> and{" "}
-          <span className="font-semibold">playlists</span> into an interactive
-          learning experience with{" "}
-          <span className="underline decoration-yellow-300">
-            transcripts, summaries, and quizzes
-          </span>
-          .
-        </p>
-
-        {/* Input Row */}
-        <form
-          onSubmit={handleAddAndGo}
-          className="flex w-full max-w-2xl mx-auto items-stretch gap-3 mb-4"
-          noValidate
-        >
-          <label htmlFor="yt-url" className="sr-only">
-            YouTube video or playlist URL
-          </label>
-
-          <input
-            id="yt-url"
-            name="yt-url"
-            type="url"
-            inputMode="url"
-            required
-            placeholder="Paste a YouTube video or playlist URL…"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            autoComplete="off"
-            className="flex-1 rounded-xl px-4 py-3 text-gray-900 outline-none shadow-lg"
-            aria-label="YouTube video or playlist URL"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            aria-busy={loading}
-            className="px-6 py-3 rounded-xl bg-white text-gray-900 font-bold shadow-md hover:scale-105 transform transition disabled:opacity-60"
+      <section className="relative pt-20 pb-20 lg:pt-32 lg:pb-32 px-6">
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {loading ? "Adding…" : "Watch"}
-          </button>
-        </form>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-indigo-100 shadow-sm mb-8">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              </span>
+              <span className="text-sm font-medium text-indigo-600">AI-Powered Learning Assistant</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-tight text-gray-900">
+              Transform Video <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+                Into Knowledge
+              </span>
+            </h1>
+            
+            <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Stop watching passively. Turn any YouTube video into an interactive learning experience with 
+              <span className="text-indigo-600 font-semibold"> transcripts</span>, 
+              <span className="text-indigo-600 font-semibold"> summaries</span>, and 
+              <span className="text-indigo-600 font-semibold"> quizzes</span>.
+            </p>
+          </motion.div>
 
-        <div className="flex items-center gap-3 justify-center mb-3">
-          <button
-            type="button"
-            onClick={handlePaste}
-            className="text-sm underline decoration-white/60"
+          {/* Input Area */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="max-w-2xl mx-auto relative group"
           >
-            Paste from clipboard
-          </button>
-
-          <span className="text-sm opacity-80">·</span>
-
-          <button
-            type="button"
-            onClick={() => {
-              setUrl("");
-              setErr("");
-            }}
-            className="text-sm underline decoration-white/60"
-          >
-            Clear
-          </button>
-
-          <span className="text-sm opacity-80">·</span>
-
-          <div className="flex gap-2">
-            {sampleUrls.map((s, i) => (
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
+            <form onSubmit={handleAddAndGo} className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-white rounded-2xl p-2 shadow-xl border border-gray-100 gap-2 sm:gap-0">
+              <div className="flex-1 flex items-center w-full">
+                <div className="pl-2 sm:pl-4 text-gray-400">
+                  <Youtube className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste YouTube URL..."
+                  className="flex-1 bg-transparent border-none text-gray-900 placeholder-gray-400 focus:ring-0 px-3 sm:px-4 py-3 text-base sm:text-lg w-full min-w-0"
+                />
+                {url && (
+                  <button
+                    type="button"
+                    onClick={() => setUrl("")}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
               <button
-                key={i}
-                onClick={() => setUrl(s)}
-                className="text-sm bg-white/10 px-2 py-1 rounded"
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-gray-900/20 w-full sm:w-auto"
               >
-                {i === 0 ? "Sample video" : "Sample playlist"}
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Processing</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Start</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
-            ))}
+            </form>
+          </motion.div>
+
+          {/* Helper Links */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500"
+          >
+            <button onClick={handlePaste} className="flex items-center gap-2 hover:text-indigo-600 transition-colors">
+              <Clipboard className="w-4 h-4" />
+              Paste from clipboard
+            </button>
+            <span>•</span>
+            <button 
+              onClick={() => setUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}
+              className="hover:text-indigo-600 transition-colors"
+            >
+              Try sample video
+            </button>
+          </motion.div>
+
+          {/* Error/Info Messages */}
+          <div className="mt-6 h-6">
+            {err && (
+              <motion.p 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="text-red-500 font-medium"
+              >
+                {err}
+              </motion.p>
+            )}
           </div>
         </div>
 
-        {err && (
-          <p className="text-sm text-red-200 mb-4" role="alert">
-            {err}
-          </p>
-        )}
+        {/* 3D Floating Elements (Light Theme) */}
+        <motion.div style={{ y: y1 }} className="absolute top-1/4 left-10 lg:left-20 hidden lg:block opacity-40 pointer-events-none">
+          <FileText className="w-32 h-32 text-indigo-300 rotate-12" />
+        </motion.div>
+        <motion.div style={{ y: y2 }} className="absolute top-1/3 right-10 lg:right-20 hidden lg:block opacity-40 pointer-events-none">
+          <BrainCircuit className="w-40 h-40 text-purple-300 -rotate-12" />
+        </motion.div>
+      </section>
 
-        {info && (
-          <p className="text-sm text-yellow-100 mb-4" role="status">
-            {info}
-          </p>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            to="/feed"
-            className="px-6 py-3 rounded-lg bg-white text-gray-900 font-bold text-lg shadow-md hover:scale-105 transform transition"
+      {/* Features Grid */}
+      <section className="py-20 px-6 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
           >
-            🚀 Start Learning
-          </Link>
-
-          <Link
-            to="/dashboard"
-            className="px-6 py-3 rounded-lg bg-white text-indigo-700 font-bold text-lg shadow-md hover:scale-105 transform transition"
-          >
-            📊 Go to Dashboard
-          </Link>
-        </div>
-      </motion.div>
-
-      {/* Features */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.8 }}
-        className="grid md:grid-cols-3 gap-8 mt-20 max-w-6xl"
-      >
-        {[
-          {
-            title: "🎥 Watch",
-            desc: "Play YouTube videos distraction-free in our custom player.",
-          },
-          {
-            title: "📖 Transcript",
-            desc: "Get full transcripts automatically for better learning.",
-          },
-          {
-            title: "🧠 Quiz",
-            desc: "Test your understanding with AI-powered quizzes.",
-          },
-        ].map((f, i) => (
-          <motion.div
-            key={i}
-            whileHover={{ scale: 1.05 }}
-            className="bg-white text-gray-800 rounded-2xl p-6 shadow-lg"
-          >
-            <h3 className="text-xl font-bold mb-3">{f.title}</h3>
-            <p className="text-gray-600">{f.desc}</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">Everything you need to <br />master any topic</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+              Our AI analyzes the video content to provide you with comprehensive learning tools instantly.
+            </p>
           </motion.div>
-        ))}
-      </motion.div>
 
-      <footer className="mt-20 text-sm opacity-70">
-        © {new Date().getFullYear()} LearnStream — Learn Smarter, Not Harder 🚀
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard 
+              icon={Play}
+              title="Distraction Free"
+              desc="Watch videos in a clean, focused environment designed purely for learning, with no sidebar distractions."
+              delay={0}
+            />
+            <FeatureCard 
+              icon={FileText}
+              title="Smart Transcripts"
+              desc="Get accurate, time-synced transcripts. Search through the video content like a document."
+              delay={0.2}
+            />
+            <FeatureCard 
+              icon={BrainCircuit}
+              title="AI Quizzes"
+              desc="Test your knowledge immediately with AI-generated quizzes based on the video's key concepts."
+              delay={0.4}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 bg-white py-12 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-lg text-gray-900">LearnStream</span>
+          </div>
+          <div className="text-gray-500 text-sm">
+            © {new Date().getFullYear()} LearnStream. All rights reserved.
+          </div>
+          <div className="flex gap-6">
+            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Privacy</a>
+            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Terms</a>
+            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Contact</a>
+          </div>
+        </div>
       </footer>
     </div>
   );

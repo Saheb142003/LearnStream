@@ -41,12 +41,12 @@ export function AuthProvider({ children }) {
     } catch {
       null;
     }
-    window.open(`${BASE_URL}/auth/google`, "_self"); // ✅ fixed (removed extra /auth)
+    window.location.href = "/auth/google"; // ✅ Use relative path to leverage Vite proxy
   };
 
   // 🔹 Logout
   const signOut = () => {
-    window.open(`${BASE_URL}/auth/logout`, "_self");
+    window.location.href = "/auth/logout";
     setUser(null);
   };
 

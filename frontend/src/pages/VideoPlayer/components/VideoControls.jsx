@@ -10,57 +10,62 @@ const VideoControls = ({
 }) => {
   const transcribeDisabled = transcriptLoading || !activeVideoId;
 
+  const buttons = [
+    {
+      id: "transcript",
+      label: transcriptLoading ? "Transcribing..." : "Transcribe",
+      icon: transcriptLoading ? "⏳" : "📖",
+      onClick: () => {
+        setViewMode("transcript");
+        if (onTranscribe && !transcribeDisabled) onTranscribe();
+      },
+      disabled: transcribeDisabled,
+    },
+    {
+      id: "summary",
+      label: "Summarize",
+      icon: "✨",
+      onClick: () => setViewMode("summary"),
+      disabled: false,
+    },
+    {
+      id: "quiz",
+      label: "Quiz",
+      icon: "🧠",
+      onClick: () => setViewMode("quiz"),
+      disabled: false,
+    },
+  ];
+
   return (
-    <div className="flex gap-3 mb-6">
-      <motion.button
-        whileHover={!transcribeDisabled ? { scale: 1.02 } : {}}
-        whileTap={!transcribeDisabled ? { scale: 0.98 } : {}}
-        type="button"
-        onClick={() => {
-          setViewMode("transcript");
-          if (onTranscribe && !transcribeDisabled) onTranscribe();
-        }}
-        disabled={transcribeDisabled}
-        aria-label="Show transcript"
-        className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm min-w-[160px] ${
-          viewMode === "transcript"
-            ? "bg-indigo-600 text-white shadow-indigo-200"
-            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-        } ${transcribeDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
-      >
-        <span>{transcriptLoading ? "⏳" : "📖"}</span>
-        <span>{transcriptLoading ? "Transcribing..." : "Transcribe"}</span>
-      </motion.button>
-
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        type="button"
-        onClick={() => setViewMode("summary")}
-        aria-label="Show summary"
-        className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors ${
-          viewMode === "summary"
-            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-        }`}
-      >
-        ✨ Summarize
-      </motion.button>
-
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        type="button"
-        onClick={() => setViewMode("quiz")}
-        aria-label="Start quiz"
-        className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors ${
-          viewMode === "quiz"
-            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-        }`}
-      >
-        🧠 Quizzify
-      </motion.button>
+    <div className="flex flex-row gap-2 mb-2 bg-gray-100/50 p-1 rounded-xl border border-gray-200/50">
+      {buttons.map((btn) => {
+        const isActive = viewMode === btn.id;
+        return (
+          <motion.button
+            key={btn.id}
+            whileHover={!btn.disabled ? { scale: 1.02 } : {}}
+            whileTap={!btn.disabled ? { scale: 0.95 } : {}}
+            onClick={btn.onClick}
+            disabled={btn.disabled}
+            className={`relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all duration-200 min-w-0 touch-manipulation active:scale-95 ${
+              isActive
+                ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100 ring-1 ring-black/5"
+                : "text-gray-600 hover:bg-white/60 hover:text-gray-900"
+            } ${btn.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <span className="text-base sm:text-lg shrink-0">{btn.icon}</span>
+            <span className="text-xs sm:text-sm truncate">{btn.label}</span>
+            {isActive && (
+              <motion.div
+                layoutId="activeIndicator"
+                className="absolute inset-0 rounded-lg sm:rounded-xl ring-2 ring-indigo-500/10 pointer-events-none"
+              />
+            )}
+          </motion.button>
+        );
+      })}
     </div>
   );
 };

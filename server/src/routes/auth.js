@@ -19,7 +19,9 @@ router.get(
   }),
   (req, res) => {
     // Redirect to frontend after successful login
-    res.redirect(process.env.CLIENT_URL);
+    req.session.save(() => {
+      res.redirect(process.env.CLIENT_URL);
+    });
   }
 );
 

@@ -3,16 +3,22 @@ import React from "react";
 
 const QuizBox = ({ quiz }) => {
   return (
-    <div className="p-3 border rounded-lg bg-gray-50 max-h-80 overflow-y-auto">
-      <h3 className="font-semibold mb-2">Quiz</h3>
+    <div className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 min-h-[200px]">
+      <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span className="text-emerald-500">🧠</span> Quiz
+      </h3>
       {quiz.length > 0 ? (
-        <ul className="list-disc list-inside text-sm text-gray-700">
+        <ul className="space-y-3">
           {quiz.map((q, i) => (
-            <li key={i}>{q}</li>
+            <li key={i} className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+              {q}
+            </li>
           ))}
         </ul>
       ) : (
-        <p className="text-gray-500">No quiz generated yet.</p>
+        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <p className="font-medium">No quiz generated yet.</p>
+        </div>
       )}
     </div>
   );

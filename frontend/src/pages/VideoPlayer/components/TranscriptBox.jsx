@@ -17,7 +17,7 @@ const TranscriptBox = ({ transcript, loading }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 h-[28rem] flex flex-col relative group"
+      className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 flex flex-col relative group min-h-[200px]"
       role="log"
       aria-live="polite"
       tabIndex={0}
@@ -37,9 +37,9 @@ const TranscriptBox = ({ transcript, loading }) => {
         )}
       </div>
       
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+      <div className="flex-1">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -61,7 +61,7 @@ const TranscriptBox = ({ transcript, loading }) => {
             </pre>
           </motion.div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <span className="text-4xl mb-3 opacity-50">📝</span>
             <p className="font-medium">No transcript available.</p>
             <p className="text-xs mt-1 opacity-70">Try another video or check back later.</p>
