@@ -1,7 +1,5 @@
 # LearnStream
 
-![LearnStream Banner](frontend/assets/banner.png)
-
 [🌐 Live Demo](https://learnstream.netlify.app) | [🐞 Report Bug](https://github.com/Saheb142003/LearnStream/issues) | [✨ Request Feature](https://github.com/Saheb142003/LearnStream/issues)
 
 ---

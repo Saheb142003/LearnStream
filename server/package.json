@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "@google/generative-ai": "^0.24.1",
