@@ -1,156 +1,174 @@
-# LearnStream - AI-Powered Learning Platform
+# LearnStream
 
-![LearnStream Home](/frontend/assets/Home.JPG)
+[🌐 Live Demo](https://learnstream.netlify.app) | [🐞 Report Bug](https://github.com/Saheb142003/LearnStream/issues) | [✨ Request Feature](https://github.com/Saheb142003/LearnStream/issues)
 
-<div align="center">
+---
 
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
+![Stars](https://img.shields.io/github/stars/Saheb142003/LearnStream?style=for-the-badge)
+![Forks](https://img.shields.io/github/forks/Saheb142003/LearnStream?style=for-the-badge)
+![License](https://img.shields.io/github/license/Saheb142003/LearnStream?style=for-the-badge)
+![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Node](https://img.shields.io/badge/Node.js-20.0-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 
-</div>
+**LearnStream** is a premier **AI-powered educational platform** designed to transform passive video watching into an interactive learning experience. By leveraging advanced AI, LearnStream converts YouTube videos into comprehensive study guides, complete with transcripts, summaries, and interactive quizzes.
 
-<br />
+It brings together **video learning**, **AI analysis**, **progress tracking**, and **distraction-free viewing** in a clean, modern interface.
 
-**LearnStream** is a modern, AI-enhanced video learning platform designed to transform how you consume educational content. By integrating advanced AI capabilities directly into the video experience, LearnStream helps you learn faster, retain more, and track your progress effectively.
+- **Tech Stack:** React 19, Tailwind CSS, Node.js, Express, MongoDB, Google Gemini AI
+- **Live Site:** <https://learnstream.netlify.app>
 
-### 🔗 [Live Demo](https://learnstream.netlify.app)
+---
+
+## 📸 Screenshots
+
+|                **Home Page**                |                  **Feed**                  |
+| :-----------------------------------------: | :----------------------------------------: |
+|   ![Home Page](frontend/assets/Home.JPG)    |     ![Feed](frontend/assets/Feed.JPG)      |
+| _Transform videos into knowledge instantly_ | _Discover and track your learning journey_ |
+
+In the age of endless content, **retention** is the real challenge. Students and professionals watch hours of tutorials but often struggle to recall key concepts or test their understanding.
+
+**LearnStream solves this by:**
+
+1.  **Removing Distractions**: No sidebar recommendations or ads.
+2.  **Active Recall**: AI-generated quizzes force you to test your knowledge immediately.
+3.  **Quick Review**: Summaries and transcripts allow for rapid revision without re-watching.
+
+If you support this mission, leaving a ⭐ helps others discover the project!
 
 ---
 
 ## 🚀 Key Features
 
-### 🧠 AI-Powered Learning Tools
-
-- **Instant Summaries**: Get concise, AI-generated summaries of any video to grasp key concepts in seconds using Google Gemini.
-- **Interactive Quizzes**: Test your knowledge with auto-generated quizzes based on video content.
-- **Smart Transcripts**: Follow along with synchronized transcripts for better accessibility and note-taking.
-
-### 📊 Comprehensive Dashboard
-
-- **Activity Tracking**: Monitor your daily watch time, app usage, and learning streaks.
-- **Progress Visualization**: Visualize your learning habits with interactive charts.
-- **Quiz History**: Keep track of your quiz scores and identify areas for improvement.
-
-### 📺 Intelligent Feed & Player
-
-- **Mixed Content Feed**: Discover both individual videos and curated playlists in a seamless, infinite-scroll feed.
-- **Smart Search**: Find content instantly with optimized, debounced search.
-- **Distraction-Free Player**: Focus on learning with a clean, theater-mode player interface.
-
-![LearnStream Feed](/frontend/assets/Feed.JPG)
+| Feature                 | Description                                |
+| ----------------------- | ------------------------------------------ |
+| **AI Transcripts**      | Accurate, time-synced video transcripts    |
+| **Smart Summaries**     | AI-generated concise summaries of content  |
+| **Interactive Quizzes** | Auto-generated quizzes to test retention   |
+| **Distraction Free**    | Clean player interface focused on learning |
+| **Progress Tracking**   | Track watched videos and quiz scores       |
+| **Playlist Support**    | Import entire YouTube playlists            |
+| **Secure Auth**         | Google OAuth & Local Authentication        |
+| **Responsive Design**   | Works seamlessly on desktop and mobile     |
 
 ---
 
-## 🛠️ Tech Stack
+## 🧪 Tech & Architecture
 
-| Category      | Technologies                                                     |
-| ------------- | ---------------------------------------------------------------- |
-| **Frontend**  | React, Vite, Tailwind CSS, Framer Motion, Recharts, Lucide React |
-| **Backend**   | Node.js, Express, MongoDB, Mongoose                              |
-| **AI & Data** | Google Gemini API, YouTube Transcript API, Python (Scripting)    |
-| **Auth**      | Passport.js (Google OAuth 2.0)                                   |
-| **DevOps**    | Docker (Optional), Render/Netlify (Deployment)                   |
+This project is built as a **Monorepo** containing both the Frontend and Backend.
+
+### **Frontend**
+
+- **Framework:** React 19 (Vite)
+- **Styling:** Tailwind CSS, Framer Motion
+- **Icons:** Lucide React
+- **State/Routing:** React Router v7, Context API
+- **SEO:** React Helmet Async
+
+### **Backend**
+
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MongoDB (Mongoose)
+- **AI Engine:** Google Gemini API
+- **Authentication:** Passport.js (Google OAuth)
+- **Video Processing:** youtube-transcript, ytdl-core
+
+### **DevOps**
+
+- **Frontend Hosting:** Netlify
+- **Backend Hosting:** Render
+- **CI/CD:** GitHub Actions / Netlify Auto-Builds
 
 ---
 
-## 📦 Installation & Setup
+## 🛠️ Getting Started
+
+Follow these steps to run LearnStream locally on your machine.
 
 ### Prerequisites
 
-- **Node.js** (v18+ recommended)
-- **MongoDB** (Local or Atlas URI)
-- **Python** (Required for some transcript fetching fallbacks)
-- **Google Cloud Console Project** (For OAuth and Gemini API)
+- Node.js (v18+)
+- MongoDB (Local or Atlas URI)
+- Google Gemini API Key
 
-### 1. Clone the Repository
+### Installation
 
-```bash
-git clone https://github.com/Saheb142003/LearnStream.git
-cd LearnStream
-```
+1.  **Clone the repository**
 
-### 2. Backend Setup
+    ```bash
+    git clone https://github.com/Saheb142003/LearnStream.git
+    cd LearnStream
+    ```
 
-Navigate to the server directory and install dependencies:
+2.  **Install Dependencies**
 
-```bash
-cd server
-npm install
-```
+    ```bash
+    # Install Frontend Dependencies
+    cd frontend
+    npm install
 
-Create a `.env` file in the `server` directory with the following variables:
+    # Install Backend Dependencies
+    cd ../server
+    npm install
+    ```
 
-```env
-PORT=8000
-SERVER_URL=http://localhost:8000
-CLIENT_URL=http://localhost:5173
-MONGO_URI=your_mongodb_connection_string
-SESSION_SECRET=your_session_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-SUMMARY_API_KEY=your_gemini_api_key
-QUIZ_API_KEY=your_gemini_api_key
-PYTHON_BIN=python
-TRANSCRIPT_LANGS=en,en-US,en-GB,en-IN,hi
-```
+3.  **Environment Setup**
+    Create a `.env` file in the `server` directory:
 
-### 3. Frontend Setup
+    ```env
+    PORT=5000
+    MONGO_URI=your_mongodb_connection_string
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+    COOKIE_KEY=your_session_secret
+    GEMINI_API_KEY=your_gemini_api_key
+    CLIENT_URL=http://localhost:5173
+    ```
 
-Navigate to the frontend directory and install dependencies:
+4.  **Run the Application**
+    Open two terminal windows:
 
-```bash
-cd ../frontend
-npm install
-```
+    _Terminal 1 (Backend):_
 
-Create a `.env` file in the `frontend` directory:
+    ```bash
+    cd server
+    npm start
+    ```
 
-```env
-VITE_API_URL=http://localhost:8000
-VITE_SERVER_URL=http://localhost:8000
-```
+    _Terminal 2 (Frontend):_
 
----
+    ```bash
+    cd frontend
+    npm run dev
+    ```
 
-## 🏃‍♂️ Running the Application
-
-### Development Mode
-
-You need to run both the backend and frontend servers.
-
-**Terminal 1 (Backend):**
-
-```bash
-cd server
-npm start
-```
-
-_Server runs on http://localhost:8000_
-
-**Terminal 2 (Frontend):**
-
-```bash
-cd frontend
-npm run dev
-```
-
-_Frontend runs on http://localhost:5173_
+5.  **Visit the App**
+    Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🤝 Contributing
+## 📝 License
 
-Contributions are always welcome!
+LearnStream is licensed under the **MIT License**.
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **Free to use** for personal and educational purposes.
+- **Open Source** contributions are welcome.
 
-## 📄 License
+See: `LICENSE` file for details.
 
-This project is licensed under the MIT License.
+---
+
+## 👥 Contributors
+
+- **Lead Developer:** Md Sahebuddin Ansari ([@Saheb142003](https://github.com/Saheb142003))
+- **Role:** Full Stack Developer
+
+---
+
+## 📬 Contact
+
+- **Website:** <https://learnstream.netlify.app>
+- **GitHub:** <https://github.com/Saheb142003>
+- **LinkedIn:** <https://www.linkedin.com/in/saheb142003>
+- **Email:** <saheb142003@gmail.com>
