@@ -3,16 +3,17 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Play, 
-  FileText, 
-  BrainCircuit, 
-  ArrowRight, 
-  Clipboard, 
+import {
+  Play,
+  FileText,
+  BrainCircuit,
+  ArrowRight,
+  Clipboard,
   X,
   Youtube,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 const AUTH_ROUTE = "/profile";
@@ -56,7 +57,7 @@ export default function Home() {
   const navigate = useNavigate();
   const abortRef = useRef(null);
   const { scrollY } = useScroll();
-  
+
   // Parallax effects
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
   const y2 = useTransform(scrollY, [0, 500], [0, -150]);
@@ -130,7 +131,9 @@ export default function Home() {
         }
 
         if (!res.ok) {
-          throw new Error(data.message || `Server responded with ${res.status}`);
+          throw new Error(
+            data.message || `Server responded with ${res.status}`
+          );
         }
 
         const id = data._id ?? data.id ?? data.playlistId;
@@ -151,6 +154,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 selection:bg-indigo-100 overflow-x-hidden font-sans">
       {/* Background Gradients (Light) */}
+      <Helmet>
+        <title>LearnStream - Transform Video Into Knowledge</title>
+        <meta
+          name="description"
+          content="Turn any YouTube video into an interactive learning experience with transcripts, summaries, and quizzes."
+        />
+        <link rel="canonical" href="https://learnstream.netlify.app/" />
+      </Helmet>
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-[120px]" />
@@ -169,20 +180,27 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
               </span>
-              <span className="text-sm font-medium text-indigo-600">AI-Powered Learning Assistant</span>
+              <span className="text-sm font-medium text-indigo-600">
+                AI-Powered Learning Assistant
+              </span>
             </div>
-            
+
             <h1 className="text-4xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-tight text-gray-900">
               Transform Video <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
                 Into Knowledge
               </span>
             </h1>
-            
+
             <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Stop watching passively. Turn any YouTube video into an interactive learning experience with 
-              <span className="text-indigo-600 font-semibold"> transcripts</span>, 
-              <span className="text-indigo-600 font-semibold"> summaries</span>, and 
+              Stop watching passively. Turn any YouTube video into an
+              interactive learning experience with
+              <span className="text-indigo-600 font-semibold">
+                {" "}
+                transcripts
+              </span>
+              ,<span className="text-indigo-600 font-semibold"> summaries</span>
+              , and
               <span className="text-indigo-600 font-semibold"> quizzes</span>.
             </p>
           </motion.div>
@@ -195,7 +213,10 @@ export default function Home() {
             className="max-w-2xl mx-auto relative group"
           >
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
-            <form onSubmit={handleAddAndGo} className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-white rounded-2xl p-2 shadow-xl border border-gray-100 gap-2 sm:gap-0">
+            <form
+              onSubmit={handleAddAndGo}
+              className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-white rounded-2xl p-2 shadow-xl border border-gray-100 gap-2 sm:gap-0"
+            >
               <div className="flex-1 flex items-center w-full">
                 <div className="pl-2 sm:pl-4 text-gray-400">
                   <Youtube className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -244,13 +265,18 @@ export default function Home() {
             transition={{ delay: 0.4 }}
             className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500"
           >
-            <button onClick={handlePaste} className="flex items-center gap-2 hover:text-indigo-600 transition-colors">
+            <button
+              onClick={handlePaste}
+              className="flex items-center gap-2 hover:text-indigo-600 transition-colors"
+            >
               <Clipboard className="w-4 h-4" />
               Paste from clipboard
             </button>
             <span>•</span>
-            <button 
-              onClick={() => setUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}
+            <button
+              onClick={() =>
+                setUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+              }
               className="hover:text-indigo-600 transition-colors"
             >
               Try sample video
@@ -260,9 +286,9 @@ export default function Home() {
           {/* Error/Info Messages */}
           <div className="mt-6 h-6">
             {err && (
-              <motion.p 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }} 
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="text-red-500 font-medium"
               >
                 {err}
@@ -272,10 +298,16 @@ export default function Home() {
         </div>
 
         {/* 3D Floating Elements (Light Theme) */}
-        <motion.div style={{ y: y1 }} className="absolute top-1/4 left-10 lg:left-20 hidden lg:block opacity-40 pointer-events-none">
+        <motion.div
+          style={{ y: y1 }}
+          className="absolute top-1/4 left-10 lg:left-20 hidden lg:block opacity-40 pointer-events-none"
+        >
           <FileText className="w-32 h-32 text-indigo-300 rotate-12" />
         </motion.div>
-        <motion.div style={{ y: y2 }} className="absolute top-1/3 right-10 lg:right-20 hidden lg:block opacity-40 pointer-events-none">
+        <motion.div
+          style={{ y: y2 }}
+          className="absolute top-1/3 right-10 lg:right-20 hidden lg:block opacity-40 pointer-events-none"
+        >
           <BrainCircuit className="w-40 h-40 text-purple-300 -rotate-12" />
         </motion.div>
       </section>
@@ -283,32 +315,36 @@ export default function Home() {
       {/* Features Grid */}
       <section className="py-20 px-6 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-20"
           >
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">Everything you need to <br />master any topic</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">
+              Everything you need to <br />
+              master any topic
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-              Our AI analyzes the video content to provide you with comprehensive learning tools instantly.
+              Our AI analyzes the video content to provide you with
+              comprehensive learning tools instantly.
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={Play}
               title="Distraction Free"
               desc="Watch videos in a clean, focused environment designed purely for learning, with no sidebar distractions."
               delay={0}
             />
-            <FeatureCard 
+            <FeatureCard
               icon={FileText}
               title="Smart Transcripts"
               desc="Get accurate, time-synced transcripts. Search through the video content like a document."
               delay={0.2}
             />
-            <FeatureCard 
+            <FeatureCard
               icon={BrainCircuit}
               title="AI Quizzes"
               desc="Test your knowledge immediately with AI-generated quizzes based on the video's key concepts."
@@ -319,24 +355,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg text-gray-900">LearnStream</span>
-          </div>
-          <div className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} LearnStream. All rights reserved.
-          </div>
-          <div className="flex gap-6">
-            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Privacy</a>
-            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Terms</a>
-            <a href="#" className="text-gray-500 hover:text-indigo-600 transition-colors">Contact</a>
-          </div>
-        </div>
-      </footer>
+      {/* Footer removed - using global footer */}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Header from "./components/header/Header";
 import Navbar from "./components/navbar/Navbar";
+import Footer from "./components/footer/Footer";
 import Profile from "./pages/Profile/Profile";
 
 import Home from "./pages/Home/Home";
@@ -12,6 +13,7 @@ import Playlist from "./pages/Playlist/Playlist";
 import Learning from "./pages/MyLearning/Learning";
 import VideoPlayer from "./pages/Playlist/VideoPlayer";
 import Player from "./pages/VideoPlayer/Player"; // <-- new fancy player
+import Contact from "./pages/Contact/Contact";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -31,10 +33,10 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
       <Navbar />
-      <div className="">
+      <div className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/feed" element={<Feed />} />
@@ -47,8 +49,10 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/learning" element={<Learning />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </div>
+      <Footer />
     </div>
   );
 }
