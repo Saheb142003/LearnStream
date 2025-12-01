@@ -136,14 +136,8 @@ export default function Feed() {
   };
 
   const handlePlaylistClick = (playlist) => {
-    // Navigate to playlist view (assuming route exists, or just player with playlist param)
-    // For now, let's go to the first video of the playlist if possible, or a playlist page
-    // The user has a /playlist route, but that seems to be "My Playlists".
-    // Let's assume we want to play the playlist.
-    // We can use the player with ?list=ID if supported, or just open the playlist page.
-    // Given the current app structure, maybe just open the first video is safest if we don't have a dedicated public playlist view.
-    // But wait, `loadFromPlaylist` in Player.jsx handles playlist IDs!
-    navigate(`/player/${playlist.playlistId}`);
+    // Navigate to dedicated playlist view
+    navigate(`/playlist/${playlist.playlistId}`);
   };
 
   const loadMore = () => {

@@ -15,6 +15,7 @@ import SummaryBox from "./components/SummaryBox";
 import QuizBox from "./components/QuizBox";
 import Predisplay from "./components/Predisplay";
 import SkeletonLoader from "../../components/SkeletonLoader";
+import { useAuth } from "../../hooks/useAuth";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 const AUTH_ROUTE = "/profile";
@@ -30,6 +31,7 @@ const Player = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, startGoogleSignIn } = useAuth();
 
   const search = new URLSearchParams(location.search);
   const requestedVideoId = search.get("v") || "";
@@ -76,14 +78,8 @@ const Player = () => {
         });
 
         if (res.status === 401) {
-          navigate(AUTH_ROUTE, {
-            replace: true,
-            state: {
-              redirectTo: `/player/${entryId}${
-                requestedVideoId ? `?v=${requestedVideoId}` : ""
-              }`,
-            },
-          });
+          // If unauthorized for playlist, redirect to auth
+          startGoogleSignIn();
           return;
         }
 
@@ -155,7 +151,7 @@ const Player = () => {
     }
 
     setErr("❌ Invalid player id in URL.");
-  }, [id, requestedVideoId, navigate]);
+  }, [id, requestedVideoId, navigate, startGoogleSignIn]);
 
   // Tracking Logic
   useEffect(() => {
@@ -210,6 +206,12 @@ const Player = () => {
         return;
       }
 
+      // Enforce Auth for Transcription
+      if (!isAuthenticated) {
+        startGoogleSignIn();
+        return;
+      }
+
       if (controllerRef.current) {
         controllerRef.current.abort();
       }
@@ -229,14 +231,7 @@ const Player = () => {
         );
 
         if (res.status === 401) {
-          navigate(AUTH_ROUTE, {
-            replace: true,
-            state: {
-              redirectTo: `/player/${id}${
-                requestedVideoId ? `?v=${requestedVideoId}` : ""
-              }`,
-            },
-          });
+          startGoogleSignIn();
           return;
         }
 
@@ -262,10 +257,22 @@ const Player = () => {
         setTranscriptLoading(false);
       }
     },
-    [activeVideoId, id, requestedVideoId, navigate]
+    [
+      activeVideoId,
+      id,
+      requestedVideoId,
+      navigate,
+      isAuthenticated,
+      startGoogleSignIn,
+    ]
   );
 
   const handleSummarize = async () => {
+    if (!isAuthenticated) {
+      startGoogleSignIn();
+      return;
+    }
+
     if (!transcript) {
       setErr("Please generate transcript first.");
       return;
@@ -291,8 +298,8 @@ const Player = () => {
   };
 
   const handleQuizify = async (difficulty = "medium") => {
-    if (!transcript) {
-      setErr("Please generate transcript first.");
+    if (!summary) {
+      setErr("Please generate summary first to create a quiz.");
       return;
     }
     setViewMode("quiz");
@@ -305,7 +312,7 @@ const Player = () => {
       const res = await fetch(`${BASE_URL}/api/ai/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, difficulty }),
+        body: JSON.stringify({ summary, difficulty }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);

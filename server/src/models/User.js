@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    accountType: {
+      type: String,
+      enum: ["Student", "Teacher", "Developer", "Learner", "Other"],
+      default: "Learner",
+    },
     // Tracking Data
     stats: {
       totalWatchTime: { type: Number, default: 0 }, // in seconds

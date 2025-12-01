@@ -78,15 +78,26 @@ router.post("/quiz", async (req, res) => {
         .json({ error: "Server configuration error: Missing API Key" });
     }
 
-    const { transcript, difficulty = "medium" } = req.body;
-    if (!transcript)
-      return res.status(400).json({ error: "Transcript is required" });
+    const { transcript, summary, difficulty = "medium" } = req.body;
 
-    const cleanedText = cleanTranscript(transcript);
-    if (!cleanedText)
-      return res.status(400).json({ error: "Transcript is empty" });
+    let sourceText = "";
+    let sourceLabel = "";
 
-    const truncatedText = cleanedText.substring(0, 30000);
+    if (summary && typeof summary === "string" && summary.trim().length > 0) {
+      sourceText = summary;
+      sourceLabel = "Summary";
+    } else if (transcript) {
+      sourceText = cleanTranscript(transcript);
+      sourceLabel = "Transcript";
+    }
+
+    if (!sourceText) {
+      return res
+        .status(400)
+        .json({ error: "Summary or Transcript is required" });
+    }
+
+    const truncatedText = sourceText.substring(0, 30000);
 
     const genAI = new GoogleGenerativeAI(apiKey);
     // Use JSON mode for reliable output
@@ -95,7 +106,7 @@ router.post("/quiz", async (req, res) => {
       generationConfig: { responseMimeType: "application/json" },
     });
 
-    const prompt = `You are a quiz generator. Generate 5 multiple-choice questions based on the summary provided below.
+    const prompt = `You are a quiz generator. Generate 5 multiple-choice questions based on the ${sourceLabel.toLowerCase()} provided below.
     
     Difficulty Level: ${difficulty}
     
@@ -105,7 +116,7 @@ router.post("/quiz", async (req, res) => {
     - "options": array of 4 strings
     - "correctAnswer": integer (0-3, representing the index of the correct option)
 
-    Transcript:
+    ${sourceLabel}:
     ${truncatedText}`;
 
     const result = await model.generateContent(prompt);

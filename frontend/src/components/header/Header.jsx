@@ -124,96 +124,37 @@ function AnimatedTaglineInline({ taglines = TAGLINES, style }) {
 
 export default function Header() {
   const { isAuthenticated, user, startGoogleSignIn, signOut } = useAuth();
-  const nameRef = useRef(null);
-  const centerWrapperRef = useRef(null);
-  const [taglinePos, setTaglinePos] = useState({ left: "50%", gap: 12 });
-  const xOffset = 150;
-
-  // Desktop positioning logic only runs above md screen
-  useEffect(() => {
-    function measure() {
-      if (window.innerWidth < 768) return; // skip on mobile
-      const nameEl = nameRef.current;
-      const wrapper = centerWrapperRef.current;
-      if (!nameEl || !wrapper) return;
-      const nameRect = nameEl.getBoundingClientRect();
-      const wrapRect = wrapper.getBoundingClientRect();
-      const gap = 12;
-      const leftPx = Math.round(
-        wrapRect.width / 2 + nameRect.width / 2 + gap - xOffset
-      );
-      setTaglinePos({ left: `${leftPx}px`, gap });
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [xOffset]);
 
   return (
-    <header className="sticky top-0 z-40 bg-gradient-to-br from-blue-200/30 via-indigo-200/30 to-purple-200/30 backdrop-blur">
+    <header className="sticky top-0 z-40 bg-gradient-to-br from-blue-200/30 via-indigo-200/30 to-purple-200/30 backdrop-blur border-b border-white/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* LEFT */}
-          <div className="flex items-center gap-2">
-            <a
-              href="https://learnstream.netlify.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center"
-            >
+        <div className="relative flex h-14 items-center justify-between">
+          {/* LEFT: Logo Icon Only */}
+          <div className="flex items-center shrink-0 z-10">
+            <a href="/" className="flex items-center">
               <img
                 src={Logo}
                 alt="LearnStream"
-                className="w-10 h-10 rounded-lg shadow-sm object-cover bg-white"
+                className="w-8 h-8 rounded-lg shadow-sm object-cover bg-white"
               />
             </a>
           </div>
 
-          {/* CENTER */}
-          {/* Desktop (md+): name + tagline inline */}
-          <div
-            ref={centerWrapperRef}
-            className="relative hidden md:block flex-1"
-          >
-            <div
-              ref={nameRef}
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                transform: `translate(calc(-50% - ${xOffset}px), -50%)`,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
-                <span className="leading-none">LearnStream</span>
-                <span className="hidden md:inline text-gray-500">-</span>
-              </h1>
-            </div>
-
-            <div
-              style={{
-                position: "absolute",
-                left: taglinePos.left,
-                top: "50%",
-                transform: "translateY(-50%)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <AnimatedTaglineInline />
+          {/* CENTER: Title (+ Tagline on Desktop) */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <span className="font-bold text-lg text-gray-900 tracking-tight">
+                LearnStream
+              </span>
+              <div className="hidden md:block">
+                <span className="text-gray-400 mr-2">-</span>
+                <AnimatedTaglineInline />
+              </div>
             </div>
           </div>
 
-          {/* Mobile (below md): stacked name + tagline */}
-          <div className="block md:hidden text-center flex-1">
-            <h1 className="text-lg font-semibold text-gray-900 leading-tight">
-              LearnStream
-            </h1>
-            <AnimatedTaglineInline />
-          </div>
-
-          {/* RIGHT */}
-          <div className="flex items-center gap-3">
+          {/* RIGHT: User Menu */}
+          <div className="flex items-center gap-3 shrink-0 z-10">
             <UserDropdown
               isAuthenticated={isAuthenticated}
               onSignIn={startGoogleSignIn}

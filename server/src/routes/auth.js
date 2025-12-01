@@ -24,12 +24,44 @@ router.get(
 );
 
 // Login success
-router.get("/login/success", (req, res) => {
+router.get("/login/success", async (req, res) => {
   if (req.user) {
-    const { _id, name, email, picture } = req.user;
+    // Backfill createdAt for old users if missing
+    if (!req.user.createdAt) {
+      try {
+        // Use lastLogin or current time as fallback
+        const fallbackDate = req.user.lastLogin || new Date();
+        // We need to bypass mongoose timestamps if we want to set a specific date,
+        // but since we are just backfilling, setting it to a date is fine.
+        // However, Mongoose timestamps option might override 'createdAt' on save if it thinks it's a new doc,
+        // but this is an update.
+        // To be safe, we can use $set in update or just save.
+        // Since req.user is a mongoose doc (from deserializeUser), we can try saving.
+        // But 'createdAt' is immutable by default in Mongoose timestamps?
+        // Actually, if it's missing, Mongoose will create it on save if timestamps: true.
+        // But we want to set it to an OLD date if possible (lastLogin), not now.
+        // Let's try to update it directly.
+
+        req.user.createdAt = fallbackDate;
+        await req.user.save();
+      } catch (err) {
+        console.error("Error backfilling createdAt:", err);
+      }
+    }
+
+    const { _id, name, email, picture, accountType, createdAt, lastLogin } =
+      req.user;
     res.json({
       success: true,
-      user: { id: _id, name, email, picture },
+      user: {
+        id: _id,
+        name,
+        email,
+        picture,
+        accountType: accountType || "Learner",
+        createdAt,
+        lastLogin,
+      },
     });
   } else {
     res.status(401).json({ success: false, message: "Not authenticated" });
