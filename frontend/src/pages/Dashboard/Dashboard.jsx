@@ -3,15 +3,28 @@ import ActivityChart from "./components/ActivityChart";
 import StatsCards from "./components/StatsCards";
 import QuizHistory from "./components/QuizHistory";
 import SkeletonLoader from "../../components/SkeletonLoader";
+import { useAuth } from "../../hooks/useAuth";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Dashboard = () => {
+  const {
+    isAuthenticated,
+    loading: authLoading,
+    startGoogleSignIn,
+  } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      startGoogleSignIn();
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/user/dashboard`, {
@@ -29,7 +42,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [authLoading, isAuthenticated, startGoogleSignIn]);
 
   if (loading) {
     return (
