@@ -63,6 +63,16 @@ const userSchema = new mongoose.Schema(
         difficulty: String,
       },
     ],
+    // New: Detailed progress for "Continue Watching"
+    learningProgress: [
+      {
+        videoId: { type: String, required: true },
+        title: String,
+        thumbnailUrl: String,
+        lastWatched: { type: Date, default: Date.now },
+        playlistId: String,
+      },
+    ],
   },
   { timestamps: true }
 );

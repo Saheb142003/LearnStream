@@ -170,7 +170,8 @@ router.post("/quiz-result", isAuthenticated, async (req, res) => {
 // POST /api/user/track - Track user activity (watch time, app open time)
 router.post("/track", isAuthenticated, async (req, res) => {
   try {
-    const { videoId, watchTime, appOpenTime } = req.body;
+    const { videoId, watchTime, appOpenTime, title, thumbnailUrl, playlistId } =
+      req.body;
     const userId = req.user._id || req.user.id;
 
     const user = await User.findById(userId);
@@ -188,8 +189,6 @@ router.post("/track", isAuthenticated, async (req, res) => {
         loginCount: 1,
       };
       user.dailyActivity.push(todayActivity);
-      // Re-fetch reference after push? No, Mongoose handles subdoc mutation usually.
-      // But safe to access the last element.
       todayActivity = user.dailyActivity[user.dailyActivity.length - 1];
     }
 
@@ -205,15 +204,76 @@ router.post("/track", isAuthenticated, async (req, res) => {
         (todayActivity.appOpenTime || 0) + appOpenTime;
     }
 
-    // Track Video
-    if (videoId && !todayActivity.videosWatched.includes(videoId)) {
-      todayActivity.videosWatched.push(videoId);
+    // Track Video & Learning Progress
+    if (videoId) {
+      if (!todayActivity.videosWatched.includes(videoId)) {
+        todayActivity.videosWatched.push(videoId);
+      }
+
+      // Update Learning Progress (Continue Watching)
+      if (title) {
+        // Remove existing entry for this video
+        if (!user.learningProgress) user.learningProgress = [];
+        user.learningProgress = user.learningProgress.filter(
+          (p) => p.videoId !== videoId
+        );
+
+        // Add new entry to top
+        user.learningProgress.unshift({
+          videoId,
+          title,
+          thumbnailUrl,
+          playlistId,
+          lastWatched: new Date(),
+        });
+
+        // Keep only last 20
+        if (user.learningProgress.length > 20) {
+          user.learningProgress = user.learningProgress.slice(0, 20);
+        }
+      }
     }
 
     await user.save();
     res.json({ success: true });
   } catch (error) {
     console.error("Tracking Error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/user/learning-history - Get data for My Learning page
+router.get("/learning-history", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // 1. Continue Watching
+    const continueWatching = user.learningProgress || [];
+
+    // 2. Smart Review (Low score quizzes)
+    // Filter for quizzes with score < 60%
+    const lowScoreQuizzes = (user.quizHistory || [])
+      .filter((q) => q.totalQuestions > 0 && q.score / q.totalQuestions < 0.6)
+      .sort((a, b) => new Date(b.date) - new Date(a.date)) // Most recent first
+      .slice(0, 10); // Limit to 10
+
+    // Map to a cleaner format
+    const smartReview = lowScoreQuizzes.map((q) => ({
+      videoId: q.videoId,
+      title: q.videoTitle || "Unknown Video",
+      score: q.score,
+      totalQuestions: q.totalQuestions,
+      date: q.date,
+    }));
+
+    res.json({
+      continueWatching,
+      smartReview,
+    });
+  } catch (error) {
+    console.error("Learning History Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

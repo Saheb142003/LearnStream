@@ -103,6 +103,8 @@ const Player = () => {
         setEntry({
           title: chosenVideo.title || "Untitled Video",
           videoId: chosenVideo.videoId,
+          thumbnailUrl: chosenVideo.thumbnailUrl,
+          playlistId: entryId,
         });
         setActiveVideoId(chosenVideo.videoId);
         setTranscript(""); // reset transcript
@@ -139,6 +141,9 @@ const Player = () => {
           setEntry({
             title: data.title || "YouTube Video",
             videoId: id,
+            thumbnailUrl:
+              data.thumbnailUrl ||
+              `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
           });
         } catch (e) {
           console.error("Failed to fetch video title:", e);
@@ -155,13 +160,19 @@ const Player = () => {
 
   // Tracking Logic
   useEffect(() => {
-    if (!activeVideoId || loading) return;
+    if (!activeVideoId || loading || !entry) return;
 
-    // Track initial video view
+    // Track initial video view & update learning progress
     fetch(`${BASE_URL}/api/user/track`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoId: activeVideoId, appOpenTime: 0 }),
+      body: JSON.stringify({
+        videoId: activeVideoId,
+        appOpenTime: 0,
+        title: entry.title,
+        thumbnailUrl: entry.thumbnailUrl,
+        playlistId: entry.playlistId,
+      }),
       credentials: "include",
     }).catch(console.error);
 
@@ -176,7 +187,7 @@ const Player = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [activeVideoId, loading]);
+  }, [activeVideoId, loading, entry]);
 
   const handleQuizComplete = async (score, totalQuestions, difficulty) => {
     try {
