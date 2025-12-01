@@ -1,5 +1,6 @@
 import React from "react";
 import { Trophy, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const QuizHistory = ({ history }) => {
   if (!history || history.length === 0) {
@@ -36,7 +37,16 @@ const QuizHistory = ({ history }) => {
                   {new Date(quiz.date).toLocaleDateString()}
                 </td>
                 <td className="py-4 text-sm font-medium text-gray-800">
-                  {quiz.videoTitle || "Unknown Video"}
+                  {quiz.videoId ? (
+                    <Link
+                      to={`/player/${quiz.videoId}`}
+                      className="hover:text-indigo-600 hover:underline transition-colors"
+                    >
+                      {quiz.videoTitle || "Unknown Video"}
+                    </Link>
+                  ) : (
+                    quiz.videoTitle || "Unknown Video"
+                  )}
                 </td>
                 <td className="py-4 text-sm">
                   <span
