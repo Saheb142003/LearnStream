@@ -116,13 +116,30 @@ const Player = () => {
         setLoading(false);
       }
     }
-
     if (isMongoObjectId(id)) {
       loadFromPlaylist(id);
       return;
     }
 
     if (isYouTubeId(id)) {
+      // Check if video details were passed via navigation state
+      if (location.state?.video) {
+        const vid = location.state.video;
+        setEntry({
+          title: vid.title || "YouTube Video",
+          videoId: vid.videoId,
+          thumbnailUrl:
+            vid.thumbnailUrl ||
+            `https://img.youtube.com/vi/${vid.videoId}/hqdefault.jpg`,
+        });
+        setActiveVideoId(vid.videoId);
+        setTranscript("");
+        setSummary("");
+        setQuiz([]);
+        setLoading(false);
+        return;
+      }
+
       // Fetch video details from backend
       (async () => {
         setLoading(true);

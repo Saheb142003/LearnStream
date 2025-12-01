@@ -132,7 +132,7 @@ export default function Feed() {
   }, [items, hasMore]);
 
   const handleVideoClick = (video) => {
-    navigate(`/player/${video.videoId}`);
+    navigate(`/player/${video.videoId}`, { state: { video } });
   };
 
   const handlePlaylistClick = (playlist) => {
