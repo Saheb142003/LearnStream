@@ -88,11 +88,7 @@ router.get("/logout", (req, res, next) => {
         path: "/",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        domain:
-          process.env.NODE_ENV === "production"
-            ? "learnstream-kywh.onrender.com"
-            : undefined,
+        sameSite: "lax",
       });
 
       res.redirect(process.env.CLIENT_URL);

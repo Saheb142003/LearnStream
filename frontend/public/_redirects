@@ -1,1 +1,6 @@
-/*    /index.html   200
+# Proxy /api requests to Render backend
+/api/*  https://learnstream-kywh.onrender.com/api/:splat  200
+# Proxy /auth requests to Render backend
+/auth/*  https://learnstream-kywh.onrender.com/auth/:splat  200
+# SPA Fallback
+/*  /index.html  200

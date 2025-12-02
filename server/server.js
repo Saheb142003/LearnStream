@@ -56,13 +56,9 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // ⬅️ IMPORTANT: required for cross-site cookies
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", // ✅ Lax is fine because it's now a First-Party cookie via proxy
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      domain:
-        process.env.NODE_ENV === "production"
-          ? "learnstream-kywh.onrender.com"
-          : undefined,
     },
   })
 );
