@@ -34,7 +34,14 @@ app.use(
 
 app.use(express.json());
 
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
+
+// Add referrer policy header
+app.use((req, res, next) => {
+  res.header("Referrer-Policy", "no-referrer-when-downgrade");
+  next();
+});
+
 // Session setup
 app.use(
   session({
@@ -52,7 +59,10 @@ app.use(
       secure: process.env.NODE_ENV === "production", // ⬅️ IMPORTANT: required for cross-site cookies
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      domain: process.env.NODE_ENV === "production" ? undefined : undefined, // Let browser infer domain unless we have a custom domain
+      domain:
+        process.env.NODE_ENV === "production"
+          ? "learnstream-kywh.onrender.com"
+          : undefined,
     },
   })
 );
