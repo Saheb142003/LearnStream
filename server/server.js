@@ -38,9 +38,11 @@ app.set("trust proxy", 1);
 // Session setup
 app.use(
   session({
+    name: "connect.sid", // Explicitly set cookie name
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Required for secure cookies behind a proxy (like Render/Netlify)
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
@@ -49,7 +51,8 @@ app.use(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // ⬅️ IMPORTANT: required for cross-site cookies
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      domain: process.env.NODE_ENV === "production" ? undefined : undefined, // Let browser infer domain unless we have a custom domain
     },
   })
 );

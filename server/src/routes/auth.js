@@ -77,8 +77,22 @@ router.get("/login/failed", (req, res) => {
 router.get("/logout", (req, res, next) => {
   req.logout(function (err) {
     if (err) return next(err);
-    req.session = null; // Clear session
-    res.redirect(process.env.CLIENT_URL);
+
+    // Destroy the session in the store
+    req.session.destroy((err) => {
+      if (err) return next(err);
+
+      // Explicitly clear the cookie
+      // Note: The options must match those used when setting the cookie (except maxAge/expires)
+      res.clearCookie("connect.sid", {
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      });
+
+      res.redirect(process.env.CLIENT_URL);
+    });
   });
 });
 
