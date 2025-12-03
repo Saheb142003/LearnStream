@@ -46,7 +46,7 @@ export default function Profile() {
     setMessage(null);
 
     try {
-      const BASE_URL = import.meta.env.VITE_API_URL;
+      const BASE_URL = "";
       const res = await fetch(`${BASE_URL}/api/user/profile`, {
         method: "PUT",
         headers: {

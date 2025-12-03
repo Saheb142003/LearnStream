@@ -5,7 +5,7 @@ import AddPlaylistForm from "./AddPlaylistForm";
 import PlaylistList from "./PlaylistList";
 import { AuthContext } from "../../context/AuthContext";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = "";
 
 export default function Playlist() {
   const [playlists, setPlaylists] = useState([]);

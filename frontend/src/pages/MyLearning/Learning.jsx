@@ -4,7 +4,7 @@ import { Play, Clock, AlertCircle, BookOpen, ChevronRight } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import SkeletonLoader from "../../components/SkeletonLoader";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = "";
 
 export default function Learning() {
   const { isAuthenticated, startGoogleSignIn } = useAuth();

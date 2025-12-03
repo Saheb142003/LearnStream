@@ -6,7 +6,7 @@ import LoadingSpinner from "./LoadingSpinner";
 import ErrorMessage from "./ErrorMessage";
 import FilterBar from "./FilterBar";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = "";
 
 // Module-level cache for persistence across navigation
 let feedCache = {

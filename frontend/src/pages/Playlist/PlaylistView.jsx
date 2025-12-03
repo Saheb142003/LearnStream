@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Play, Clock, ArrowLeft } from "lucide-react";
 import SkeletonLoader from "../../components/SkeletonLoader";
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = "";
 
 export default function PlaylistView() {
   const { id } = useParams();
