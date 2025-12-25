@@ -1,5 +1,5 @@
 # server/Dockerfile
-FROM node:18-slim
+FROM node:20-slim
 
 # Install Python and pip
 # We need python3 and python3-pip for the fallback script
