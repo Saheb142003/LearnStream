@@ -63,11 +63,9 @@ router.post("/", async (req, res) => {
     }
 
     if (!playlistId && !videoId) {
-      return res
-        .status(400)
-        .json({
-          message: "Provide either a YouTube playlist or video URL/ID.",
-        });
+      return res.status(400).json({
+        message: "Provide either a YouTube playlist or video URL/ID.",
+      });
     }
 
     let canonicalKey;
@@ -141,11 +139,9 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    const userId = req.user._id;
-    const playlist = await Playlist.findOne({
-      _id: req.params.id,
-      user: userId,
-    });
+    // Allow viewing ANY playlist by ID (public access)
+    // const userId = req.user._id; // Not needed for fetching public playlist
+    const playlist = await Playlist.findById(req.params.id);
     if (!playlist)
       return res.status(404).json({ message: "Playlist not found" });
     res.json(playlist);

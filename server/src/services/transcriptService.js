@@ -1,16 +1,9 @@
 // server/src/services/transcriptService.js
-import { YoutubeTranscript } from "youtube-transcript";
-import { runPython } from "../utils/runPython.js";
-import fetch from "node-fetch";
+import { chromium } from "playwright";
 
-// Simple memory cache with size limit to prevent leaks
+// Simple memory cache
 const CACHE_LIMIT = 100;
 const CACHE = new Map();
-
-// Cache for healthy instances
-let HEALTHY_INSTANCES = [];
-let LAST_INSTANCE_FETCH = 0;
-const INSTANCE_CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 function getFromCache(key) {
   return CACHE.get(key);
@@ -24,126 +17,68 @@ function setInCache(key, value) {
   CACHE.set(key, value);
 }
 
-async function getHealthyInstances() {
-  const now = Date.now();
-  if (HEALTHY_INSTANCES.length > 0 && now - LAST_INSTANCE_FETCH < INSTANCE_CACHE_TTL) {
-    return HEALTHY_INSTANCES;
-  }
+const BROWSER_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-accelerated-2d-canvas",
+  "--no-first-run",
+  "--no-zygote",
+  "--single-process",
+  "--disable-gpu",
+];
 
-  try {
-    const res = await fetch("https://api.invidious.io/instances.json?sort_by=health", { timeout: 3000 });
-    if (!res.ok) throw new Error("Failed to fetch instances");
-    
-    const data = await res.json();
-    const instances = data
-      .filter(item => {
-        const [domain, meta] = item;
-        return meta.type === "https"; // Relaxed filter: just HTTPS
-      })
-      .map(item => item[0])
-      .slice(0, 8); // Take top 8 healthy instances
+let browser; // Reuse globally for performance
 
-    if (instances.length > 0) {
-      HEALTHY_INSTANCES = instances;
-      LAST_INSTANCE_FETCH = now;
-      return instances;
-    }
-  } catch (e) {
-    console.error("Failed to update Invidious instances:", e.message);
-  }
-
-  // Fallback hardcoded list if API fails
-  if (HEALTHY_INSTANCES.length === 0) {
-    return [
-      "inv.nadeko.net",
-      "yewtu.be",
-      "inv.perditum.com",
-      "invidious.nerdvpn.de",
-      "invidious.f5.si",
-      "inv.tux.pizza",
-      "vid.puffyan.us"
-    ];
-  }
-  
-  return HEALTHY_INSTANCES;
+async function initBrowser() {
+  if (browser) return browser;
+  browser = await chromium.launch({
+    headless: true,
+    args: BROWSER_ARGS,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // For deployment platforms
+  });
+  return browser;
 }
 
-// Helper for delay
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function parseTranscriptData(captionData) {
+  try {
+    // Try JSON first (fmt=json3)
+    const json = JSON.parse(captionData);
+    if (json && json.events) {
+      return json.events
+        .map((event) => {
+          if (event.segs) {
+            return event.segs.map((seg) => seg.utf8).join("");
+          }
+          return "";
+        })
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  } catch {
+    // Not JSON, try XML parsing
+    const regex = /<(?:text|p)[^>]*>(.*?)<\/(?:text|p)>/g;
+    let match;
+    const texts = [];
 
-async function fetchInvidiousTranscript(videoId) {
-  const instances = await getHealthyInstances();
-  
-  // Add some reliable hardcoded fallbacks to the end of the list
-  const allInstances = [
-    ...instances,
-    "https://inv.nadeko.net",
-    "https://yewtu.be",
-    "https://inv.tux.pizza"
-  ];
+    while ((match = regex.exec(captionData)) !== null) {
+      texts.push(match[1]);
+    }
 
-  // Deduplicate
-  const uniqueInstances = [...new Set(allInstances)];
-
-  for (const domain of uniqueInstances) {
-    // Handle both full URLs and domains
-    const instance = domain.startsWith('http') ? domain : `https://${domain}`;
-    
-    try {
-      // console.log(`Trying Invidious instance: ${instance}`);
-      const url = `${instance}/api/v1/captions/${videoId}`;
-      
-      // Increased timeout for data center latency
-      const res = await fetch(url, { timeout: 8000 });
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      const captions = data.captions || [];
-      if (captions.length === 0) continue;
-
-      // Prioritize English
-      const track = captions.find(c => c.languageCode === 'en') || captions[0];
-      const trackUrl = instance + track.url;
-
-      const trackRes = await fetch(trackUrl, { timeout: 8000 });
-      if (!trackRes.ok) continue;
-
-      const vttText = await trackRes.text();
-      
-      // Simple VTT parser
-      const lines = vttText.split('\n');
-      let text = "";
-      let seen = new Set();
-
-      for (let line of lines) {
-        line = line.trim();
-        // Skip empty, header, timestamps, numbers, and metadata
-        if (!line || 
-            line.includes('-->') || 
-            /^\d+$/.test(line) || 
-            line.startsWith('WEBVTT') || 
-            line.startsWith('Kind:') || 
-            line.startsWith('Language:') ||
-            line.startsWith('Style:')
-        ) continue;
-        
-        const cleanLine = line.replace(/<[^>]*>/g, '').trim();
-        if (cleanLine && !seen.has(cleanLine)) {
-          text += cleanLine + " ";
-          seen.add(cleanLine);
-        }
-      }
-      
-      return text.trim();
-
-    } catch (e) {
-      // console.warn(`Invidious instance ${instance} failed: ${e.message}`);
-      // Small delay before next attempt to be nice
-      await delay(500);
-      continue;
+    if (texts.length > 0) {
+      return texts
+        .join(" ")
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&")
+        .replace(/<[^>]*>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
     }
   }
-  throw new Error("All Invidious instances failed.");
+
+  throw new Error("Could not parse transcript data");
 }
 
 export async function fetchTranscriptText(videoId, lang = "en") {
@@ -151,62 +86,115 @@ export async function fetchTranscriptText(videoId, lang = "en") {
   const cached = getFromCache(key);
   if (cached) return cached;
 
-  let errors = [];
+  const browserInstance = await initBrowser();
+  const context = await browserInstance.newContext({
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    extraHTTPHeaders: {
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
 
-  // 1) Primary: node library
+  const page = await context.newPage();
+
   try {
-    const items = await YoutubeTranscript.fetchTranscript(videoId, { lang });
-    if (Array.isArray(items) && items.length > 0) {
-      const text = items
-        .map((i) => i.text)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      setInCache(key, text);
-      return text;
-    }
-  } catch (e) {
-    errors.push(`Node lib: ${e.message}`);
-  }
+    // Stealth fingerprints to avoid detection
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+      window.chrome = { runtime: {} };
+    });
 
-  // 2) Fallback: python youtube_transcript_api
-  try {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const langsCSV = process.env.TRANSCRIPT_LANGS || "en,en-US,en-GB,en-IN,hi";
-    const { stdout } = await runPython("fetch_transcript.py", [url, langsCSV]);
+    await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
 
-    let data;
+    // Wait for player to load
+    await page.waitForTimeout(2000);
+
+    // Extract caption URL in browser context
+    const result = await page.evaluate(
+      ({ lang }) => {
+        const match = document.documentElement.innerHTML.match(
+          /ytInitialPlayerResponse\s*=\s*({.+?});/,
+        );
+        if (!match) throw new Error("No player response found");
+
+        const playerResponse = JSON.parse(match[1]);
+        const captions =
+          playerResponse?.captions?.playerCaptionsTracklistRenderer
+            ?.captionTracks;
+        if (!captions?.length) throw new Error("No captions available");
+
+        // Smart language selection
+        let track =
+          captions.find((c) => c.languageCode === lang) ||
+          captions.find((c) => c.languageCode === "en") ||
+          captions[0];
+
+        return {
+          baseUrl: track.baseUrl,
+          lang: track.languageCode,
+        };
+      },
+      { lang },
+    );
+
+    console.log(`Found ${result.lang} transcript for ${videoId}`);
+
+    // Try JSON3 first, then XML if that fails
+    let captionData = null;
+
     try {
-      data = JSON.parse(stdout);
-    } catch (err) {
-      throw new Error("Python returned invalid JSON");
+      const json3Url =
+        result.baseUrl +
+        (result.baseUrl.includes("?") ? "&" : "?") +
+        "fmt=json3";
+      captionData = await page.evaluate(async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const text = await res.text();
+        return text.length > 0 ? text : null;
+      }, json3Url);
+    } catch (e) {
+      console.log("JSON3 fetch failed, trying XML...");
     }
 
-    if (Array.isArray(data) && data.length > 0) {
-      const text = data
-        .map(item => item.text)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      setInCache(key, text);
-      return text;
+    if (!captionData || captionData.length === 0) {
+      // Try XML format
+      captionData = await page.evaluate(async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        return text;
+      }, result.baseUrl);
     }
-    if (data && data.error) throw new Error(data.error);
-  } catch (err) {
-    errors.push(`Python lib: ${err.message}`);
-  }
 
-  // 3) Final Fallback: Invidious API (Dynamic)
-  try {
-    const text = await fetchInvidiousTranscript(videoId);
-    if (text) {
-      setInCache(key, text);
-      return text;
+    if (!captionData || captionData.length === 0) {
+      throw new Error("Empty transcript response from both JSON3 and XML");
     }
+
+    console.log(`Received ${captionData.length} bytes of caption data`);
+
+    const text = parseTranscriptData(captionData);
+    setInCache(key, text);
+    console.log(
+      `✅ Successfully fetched ${text.length} chars of ${result.lang} transcript`,
+    );
+    return text;
   } catch (e) {
-    errors.push(`Invidious: ${e.message}`);
+    console.error(`Transcript error for ${videoId}:`, e.message);
+    throw new Error(`Transcript unavailable: ${e.message}`);
+  } finally {
+    await page.close();
+    await context.close();
   }
-
-  console.error(`Transcript fetch failed for ${videoId}. Errors:`, errors);
-  throw new Error("Transcript not available (all sources failed).");
 }
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  if (browser) {
+    await browser.close();
+  }
+  process.exit(0);
+});
