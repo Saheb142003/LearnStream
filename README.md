@@ -1,5 +1,17 @@
 # LearnStream
 
+> **⚠️ SEEKING CONTRIBUTORS: Transcript Fetching Issue**
+> **Current Issue:** YouTube is actively blocking server-side transcript requests. My Playwright-based implementation can extract caption URLs but they return 0 bytes when fetched (even in browser context).
+> **Impact:** The transcript feature is currently non-functional for the video.
+> **Help Needed:** If you have experience with:
+>
+> - YouTube's anti-bot measures and workarounds
+> - Browser automation (Playwright/Puppeteer)
+> - Third-party transcript APIs
+> - Client-side extraction methods
+>
+> **Please contribute!** See [`server/src/services/transcriptService.js`](server/src/services/transcriptService.js) for current implementation.
+
 [🌐 Live Demo](https://learnstream.netlify.app) | [🐞 Report Bug](https://github.com/Saheb142003/LearnStream/issues) | [✨ Request Feature](https://github.com/Saheb142003/LearnStream/issues)
 
 ---
@@ -15,7 +27,7 @@
 It brings together **video learning**, **AI analysis**, **progress tracking**, and **distraction-free viewing** in a clean, modern interface.
 
 - **Tech Stack:** React 19, Tailwind CSS, Node.js, Express, MongoDB, Google Gemini AI
-- **Live Site:** <https://learnstream.netlify.app>
+- **Live Site:** [https://learnstream.netlify.app](https://learnstream.netlify.app)
 
 ---
 
@@ -30,9 +42,9 @@ In the age of endless content, **retention** is the real challenge. Students and
 
 **LearnStream solves this by:**
 
-1.  **Removing Distractions**: No sidebar recommendations or ads.
-2.  **Active Recall**: AI-generated quizzes force you to test your knowledge immediately.
-3.  **Quick Review**: Summaries and transcripts allow for rapid revision without re-watching.
+1. **Removing Distractions**: No sidebar recommendations or ads.
+2. **Active Recall**: AI-generated quizzes force you to test your knowledge immediately.
+3. **Quick Review**: Summaries and transcripts allow for rapid revision without re-watching.
 
 If you support this mission, leaving a ⭐ helps others discover the project!
 
@@ -94,57 +106,57 @@ Follow these steps to run LearnStream locally on your machine.
 
 ### Installation
 
-1.  **Clone the repository**
+1. **Clone the repository**
 
-    ```bash
-    git clone https://github.com/Saheb142003/LearnStream.git
-    cd LearnStream
-    ```
+   ```bash
+   git clone https://github.com/Saheb142003/LearnStream.git
+   cd LearnStream
+   ```
 
-2.  **Install Dependencies**
+2. **Install Dependencies**
 
-    ```bash
-    # Install Frontend Dependencies
-    cd frontend
-    npm install
+   ```bash
+   # Install Frontend Dependencies
+   cd frontend
+   npm install
 
-    # Install Backend Dependencies
-    cd ../server
-    npm install
-    ```
+   # Install Backend Dependencies
+   cd ../server
+   npm install
+   ```
 
-3.  **Environment Setup**
-    Create a `.env` file in the `server` directory:
+3. **Environment Setup**
+   Create a `.env` file in the `server` directory:
 
-    ```env
-    PORT=5000
-    MONGO_URI=your_mongodb_connection_string
-    GOOGLE_CLIENT_ID=your_google_client_id
-    GOOGLE_CLIENT_SECRET=your_google_client_secret
-    COOKIE_KEY=your_session_secret
-    GEMINI_API_KEY=your_gemini_api_key
-    CLIENT_URL=http://localhost:5173
-    ```
+   ```env
+   PORT=5000
+   MONGO_URI=your_mongodb_connection_string
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   COOKIE_KEY=your_session_secret
+   GEMINI_API_KEY=your_gemini_api_key
+   CLIENT_URL=http://localhost:5173
+   ```
 
-4.  **Run the Application**
-    Open two terminal windows:
+4. **Run the Application**
+   Open two terminal windows:
 
-    _Terminal 1 (Backend):_
+   _Terminal 1 (Backend):_
 
-    ```bash
-    cd server
-    npm start
-    ```
+   ```bash
+   cd server
+   npm start
+   ```
 
-    _Terminal 2 (Frontend):_
+   _Terminal 2 (Frontend):_
 
-    ```bash
-    cd frontend
-    npm run dev
-    ```
+   ```bash
+   cd frontend
+   npm run dev
+   ```
 
-5.  **Visit the App**
-    Open [http://localhost:5173](http://localhost:5173) in your browser.
+5. **Visit the App**
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
@@ -168,7 +180,7 @@ See: `LICENSE` file for details.
 
 ## 📬 Contact
 
-- **Website:** <https://learnstream.netlify.app>
-- **GitHub:** <https://github.com/Saheb142003>
-- **LinkedIn:** <https://www.linkedin.com/in/saheb142003>
+- **Website:** [https://learnstream.netlify.app](https://learnstream.netlify.app)
+- **GitHub:** [https://github.com/Saheb142003](https://github.com/Saheb142003)
+- **LinkedIn:** [https://www.linkedin.com/in/saheb142003](https://www.linkedin.com/in/saheb142003)
 - **Email:** <saheb142003@gmail.com>

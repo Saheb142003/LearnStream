@@ -23,3 +23,13 @@ server/.env
 
 # Ignore test scripts
 server/scripts/test_*.js
+server/validate*.js
+server/test-*.js
+
+# Playwright
+.playwright/
+ms-playwright/
+
+# Package lock files (optional - remove these lines if you want to commit them)
+# frontend/package-lock.json
+# server/package-lock.json
