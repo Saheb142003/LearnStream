@@ -4,6 +4,8 @@
 # server
 /server/node_modules
 
+/wiki
+
 # build
 dist/
 # logs

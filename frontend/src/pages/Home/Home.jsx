@@ -49,6 +49,180 @@ const BackgroundSticker = ({
   </motion.div>
 );
 
+// WaveText Component - Subtle Green Wave Animation
+const WaveText = () => {
+  const text1 = "Transform Video";
+  const text2 = "Into Knowledge";
+
+  const chars1 = text1.split("");
+  const chars2 = text2.split("");
+
+  const totalChars1 = chars1.length;
+  const totalChars2 = chars2.length;
+  const totalSteps = totalChars1 + totalChars2;
+
+  const animationDuration = 3; // Fast snake loop
+
+  const getCharAnimation = (isFirstLine, charIndex) => {
+    let activeStep;
+
+    if (isFirstLine) {
+      activeStep = charIndex;
+    } else {
+      activeStep = totalChars1 + (totalChars2 - 1 - charIndex);
+    }
+
+    return {
+      animationName: `waveChar${isFirstLine ? 1 : 2}_${charIndex}`,
+      animationDuration: `${animationDuration}s`,
+      animationIterationCount: "infinite",
+      animationTimingFunction: "ease-in-out",
+    };
+  };
+
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    let keyframesCSS = "";
+
+    // Helper to generate smooth wave animation
+    const generateKeyframes = (animName, activeStep) => {
+      const stepDuration = 100 / totalSteps;
+
+      const beforeStart = Math.max(0, activeStep * stepDuration - 0.5);
+      const startPercent = activeStep * stepDuration;
+      const risePercent = startPercent + stepDuration * 0.4;
+      const peakPercent = startPercent + stepDuration * 0.6;
+      const descendPercent = startPercent + stepDuration * 0.8;
+      const midFadePercent = startPercent + stepDuration * 4;
+      const endPercent = Math.min(startPercent + stepDuration * 8, 100);
+
+      return `
+        @keyframes ${animName} {
+          0% { 
+            color: #1f2937; 
+            transform: translateY(0px);
+          }
+          ${beforeStart}% { 
+            color: #1f2937; 
+            transform: translateY(0px);
+          }
+          ${startPercent}% { 
+            color: #166534; 
+            transform: translateY(-2px);
+          }
+          ${startPercent + stepDuration * 0.5}% { 
+            color: #052e16; 
+            transform: translateY(-5px);
+          }
+          ${startPercent + stepDuration * 1}% { 
+            color: #256d42ff; 
+            transform: translateY(-4px);
+          }
+          ${startPercent + stepDuration * 1.5}% { 
+            color: #166534; 
+            transform: translateY(-3px);
+          }
+          ${startPercent + stepDuration * 2}% { 
+            color: #166534; 
+            transform: translateY(-2.5px);
+          }
+          ${startPercent + stepDuration * 2.5}% { 
+            color: #15803d; 
+            transform: translateY(-2px);
+          }
+          ${startPercent + stepDuration * 3}% { 
+            color: #16a34a; 
+            transform: translateY(-1.5px);
+          }
+          ${startPercent + stepDuration * 3.5}% { 
+            color: #16a34a; 
+            transform: translateY(-1px);
+          }
+          ${startPercent + stepDuration * 4.5}% { 
+            color: #16a34a; 
+            transform: translateY(-0.5px);
+          }
+          ${startPercent + stepDuration * 5.5}% { 
+            color: #16a34a; 
+            transform: translateY(0px);
+          }
+          ${startPercent + stepDuration * 6.5}% { 
+            color: #16a34a; 
+            transform: translateY(0px);
+          }
+          ${startPercent + stepDuration * 7.5}% { 
+            color: #1f2937; 
+            transform: translateY(0px);
+          }
+          100% { 
+            color: #1f2937; 
+            transform: translateY(0px);
+          }
+        }
+      `;
+    };
+
+    // Generate keyframes for first line
+    chars1.forEach((_, i) => {
+      keyframesCSS += generateKeyframes(`waveChar1_${i}`, i);
+    });
+
+    // Generate keyframes for second line
+    chars2.forEach((_, i) => {
+      const activeStep = totalChars1 + (totalChars2 - 1 - i);
+      keyframesCSS += generateKeyframes(`waveChar2_${i}`, activeStep);
+    });
+
+    styleSheet.textContent = keyframesCSS;
+    document.head.appendChild(styleSheet);
+
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
+  return (
+    <h1
+      className="text-6xl sm:text-6xl md:text-8xl lg:text-9xl font-cursive tracking-tight mb-2 leading-none pb-2"
+      style={{
+        fontFamily: "'LocalHeadingFont', 'Dancing Script', cursive",
+      }}
+    >
+      <span style={{ display: "inline-block" }}>
+        {chars1.map((char, i) => (
+          <span
+            key={`char1-${i}`}
+            style={{
+              display: "inline-block",
+              willChange: "transform, color",
+              ...getCharAnimation(true, i),
+              whiteSpace: char === " " ? "pre" : "normal",
+            }}
+          >
+            {char}
+          </span>
+        ))}
+      </span>
+      <br />
+      <span style={{ display: "inline-block" }}>
+        {chars2.map((char, i) => (
+          <span
+            key={`char2-${i}`}
+            style={{
+              display: "inline-block",
+              willChange: "transform, color",
+              ...getCharAnimation(false, i),
+              whiteSpace: char === " " ? "pre" : "normal",
+            }}
+          >
+            {char}
+          </span>
+        ))}
+      </span>
+    </h1>
+  );
+};
+
 const BASE_URL = "";
 const AUTH_ROUTE = "/profile";
 
@@ -205,22 +379,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <h1
-              className="text-6xl sm:text-6xl md:text-8xl lg:text-9xl font-cursive tracking-tight mb-2 leading-none text-gray-900 pb-2 drop-shadow-sm"
-              style={{
-                fontFamily: "'LocalHeadingFont', 'Dancing Script', cursive",
-              }}
-            >
-              Transform Video <br />
-              <span
-                className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 font-cursive"
-                style={{
-                  fontFamily: "'LocalHeadingFont', 'Dancing Script', cursive",
-                }}
-              >
-                Into Knowledge
-              </span>
-            </h1>
+            <WaveText />
 
             {/* Short version for mobile */}
             <p className="block sm:hidden text-base text-gray-600 mb-6 max-w-xl mx-auto leading-relaxed font-medium">
