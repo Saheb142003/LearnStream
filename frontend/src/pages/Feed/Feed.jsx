@@ -15,6 +15,7 @@ let feedCache = {
   seed: null,
   scrollPos: 0,
   searchQuery: "",
+  activeFilter: "all",
 };
 
 export default function Feed() {
@@ -23,24 +24,21 @@ export default function Feed() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState(feedCache.searchQuery || "");
   const [debouncedSearch, setDebouncedSearch] = useState(
-    feedCache.searchQuery || ""
+    feedCache.searchQuery || "",
+  );
+  const [activeFilter, setActiveFilter] = useState(
+    feedCache.activeFilter || "all",
   );
   const [hasMore, setHasMore] = useState(true);
 
   const navigate = useNavigate();
   const seedRef = useRef(
-    feedCache.seed || String(Math.floor(Math.random() * 1e9))
+    feedCache.seed || String(Math.floor(Math.random() * 1e9)),
   );
   const mountedRef = useRef(false);
 
-  // Debounce search input
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+  // Search is now triggered on "Enter" inside FilterBar,
+  // bypassing the debounce timer.
 
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
@@ -56,6 +54,7 @@ export default function Feed() {
           limit: "20",
           offset: offset.toString(),
           seed: seedRef.current,
+          type: activeFilter,
         });
 
         const res = await fetch(`${BASE_URL}/api/feed?${params}`);
@@ -74,7 +73,7 @@ export default function Feed() {
         setLoading(false);
       }
     },
-    [debouncedSearch, items.length, loading]
+    [debouncedSearch, activeFilter, items.length, loading],
   );
 
   // Initial Load & Persistence Restore
@@ -84,7 +83,8 @@ export default function Feed() {
     // If we have cached items and the search hasn't changed (or is empty match), restore
     if (
       feedCache.items.length > 0 &&
-      feedCache.searchQuery === debouncedSearch
+      feedCache.searchQuery === debouncedSearch &&
+      feedCache.activeFilter === activeFilter
     ) {
       setItems(feedCache.items);
       setHasMore(feedCache.hasMore);
@@ -106,21 +106,23 @@ export default function Feed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
-  // React to Debounced Search Change
+  // React to Debounced Search Change OR Filter Change
   useEffect(() => {
     if (!mountedRef.current) return;
 
-    // Only fetch if it's a NEW search (different from what's currently loaded/cached)
-    // We check against feedCache.searchQuery to avoid double-fetch on initial mount if they match
-    if (debouncedSearch !== feedCache.searchQuery) {
+    if (
+      debouncedSearch !== feedCache.searchQuery ||
+      activeFilter !== feedCache.activeFilter
+    ) {
       seedRef.current = String(Math.floor(Math.random() * 1e9));
       setItems([]);
       setHasMore(true);
       fetchVideos(false);
-      feedCache.searchQuery = debouncedSearch; // Update cache query
+      feedCache.searchQuery = debouncedSearch;
+      feedCache.activeFilter = activeFilter;
       feedCache.scrollPos = 0; // Reset scroll for new search
     }
-  }, [debouncedSearch, fetchVideos]);
+  }, [debouncedSearch, activeFilter, fetchVideos]);
 
   // Update cache whenever items change
   useEffect(() => {
@@ -144,25 +146,28 @@ export default function Feed() {
     if (hasMore && !loading) fetchVideos(true);
   };
 
-  if (loading && items.length === 0) return <LoadingSpinner />;
-  if (error && items.length === 0)
-    return <ErrorMessage error={error} onRetry={() => fetchVideos(false)} />;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Section (only search bar now) */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-end">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header Section (Search bar + Filter Chips) */}
+      <div className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200 sticky top-0 z-10 transition-all">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <FilterBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery} // Updates immediate state for UI
+            setDebouncedSearch={setDebouncedSearch} // Triggered only on Enter
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
           />
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {items.length === 0 ? (
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+        {loading && items.length === 0 ? (
+          <LoadingSpinner />
+        ) : error && items.length === 0 ? (
+          <ErrorMessage error={error} onRetry={() => fetchVideos(false)} />
+        ) : items.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">📺</div>
             <h2 className="text-2xl font-semibold text-gray-700 mb-2">
@@ -196,7 +201,7 @@ export default function Feed() {
                     video={item}
                     onClick={() => handleVideoClick(item)}
                   />
-                )
+                ),
               )}
             </div>
 

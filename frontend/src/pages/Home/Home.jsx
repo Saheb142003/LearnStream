@@ -183,12 +183,12 @@ const WaveText = () => {
 
   return (
     <h1
-      className="text-6xl sm:text-6xl md:text-8xl lg:text-9xl font-cursive tracking-tight mb-2 leading-none pb-2"
+      className="text-4xl xs:text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-cursive tracking-tight mb-2 leading-none pb-2"
       style={{
         fontFamily: "'LocalHeadingFont', 'Dancing Script', cursive",
       }}
     >
-      <span style={{ display: "inline-block" }}>
+      <span className="whitespace-nowrap" style={{ display: "inline-block" }}>
         {chars1.map((char, i) => (
           <span
             key={`char1-${i}`}
@@ -204,7 +204,7 @@ const WaveText = () => {
         ))}
       </span>
       <br />
-      <span style={{ display: "inline-block" }}>
+      <span className="whitespace-nowrap" style={{ display: "inline-block" }}>
         {chars2.map((char, i) => (
           <span
             key={`char2-${i}`}

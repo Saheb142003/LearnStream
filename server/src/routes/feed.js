@@ -32,6 +32,7 @@ router.get("/", async (req, res) => {
       limit = 50,
       offset = 0,
       seed = "",
+      type = "all",
       userShare = "0.05",
     } = req.query;
 
@@ -80,7 +81,7 @@ router.get("/", async (req, res) => {
       if (pVideos.length > 0 && !playlist.isSingleVideo) {
         // Find a valid thumbnail from the first valid video
         const firstValid = pVideos.find(
-          (v) => v && v.videoId && v.videoId.length === 11
+          (v) => v && v.videoId && v.videoId.length === 11,
         );
         const thumb = firstValid
           ? firstValid.thumbnailUrl ||
@@ -140,8 +141,14 @@ router.get("/", async (req, res) => {
         (item) =>
           item.title.toLowerCase().includes(s) ||
           (item.playlistTitle || "").toLowerCase().includes(s) ||
-          (item.uploaderName || "").toLowerCase().includes(s)
+          (item.uploaderName || "").toLowerCase().includes(s),
       );
+    }
+
+    if (type === "playlist") {
+      filteredItems = filteredItems.filter((item) => item.type === "playlist");
+    } else if (type === "video") {
+      filteredItems = filteredItems.filter((item) => item.type === "video");
     }
 
     // Sorting
@@ -153,11 +160,11 @@ router.get("/", async (req, res) => {
       // Let's just keep duration sort for videos mostly, push playlists to end or treat as 0
       if (sortKey === "duration")
         return arr.sort(
-          (a, b) => parseDuration(b.duration) - parseDuration(a.duration)
+          (a, b) => parseDuration(b.duration) - parseDuration(a.duration),
         );
       if (sortKey === "playlist")
         return arr.sort((a, b) =>
-          (a.playlistTitle || "").localeCompare(b.playlistTitle || "")
+          (a.playlistTitle || "").localeCompare(b.playlistTitle || ""),
         );
       return arr.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
     };
