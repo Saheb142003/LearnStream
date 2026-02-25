@@ -1,43 +1,82 @@
 // frontend/src/pages/VideoPlayer/components/VideoFrame.jsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
-const VideoFrame = ({ embedUrl }) => {
-  const [iframeLoaded, setIframeLoaded] = React.useState(false);
+const VideoFrame = ({ videoId, onWatchTimeUpdate }) => {
+  const containerRef = useRef(null);
+  const playerRef = useRef(null);
+  const timerRef = useRef(null);
 
-  // Reset loaded state when url changes
-  React.useEffect(() => {
-    setIframeLoaded(false);
-  }, [embedUrl]);
+  useEffect(() => {
+    if (!videoId) return;
 
-  if (!embedUrl) {
+    const initPlayer = () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId,
+        playerVars: {
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+        },
+        events: {
+          onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              if (!timerRef.current) {
+                timerRef.current = setInterval(() => {
+                  if (onWatchTimeUpdate) {
+                    onWatchTimeUpdate(1);
+                  }
+                }, 1000);
+              }
+            } else {
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      if (firstScriptTag && firstScriptTag.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      } else {
+        document.head.appendChild(tag);
+      }
+
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, [videoId, onWatchTimeUpdate]);
+
+  if (!videoId) {
     return (
       <div className="w-full h-64 flex items-center justify-center text-gray-400 border rounded-lg">
-        🎥 Paste a YouTube link to load video
+        🎥 Select a video to load
       </div>
     );
   }
 
   return (
     <div className="w-full h-full relative bg-black rounded-xl overflow-hidden shadow-lg">
-      {!iframeLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="animate-spin text-4xl text-gray-500">⏳</div>
-        </div>
-      )}
-      <iframe
-        width="100%"
-        height="100%"
-        src={`${embedUrl}?rel=0&modestbranding=1&playsinline=1`}
-        title="YouTube video player"
-        className={`w-full h-full transition-opacity duration-500 ${
-          iframeLoaded ? "opacity-100" : "opacity-0"
-        }`}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="strict-origin-when-cross-origin"
-        onLoad={() => setIframeLoaded(true)}
-      />
+      <div ref={containerRef} className="w-full h-full" />
     </div>
   );
 };

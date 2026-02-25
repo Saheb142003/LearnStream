@@ -190,9 +190,10 @@ const Player = () => {
     }
 
     setErr("❌ Invalid player id in URL.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, requestedVideoId, navigate, startGoogleSignIn]);
 
-  // Tracking Logic
+  // Tracking Logic - Tracking initial view
   useEffect(() => {
     if (!activeVideoId || loading || !entry) return;
 
@@ -202,7 +203,6 @@ const Player = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         videoId: activeVideoId,
-        appOpenTime: 0,
         title: entry.title,
         thumbnailUrl: entry.thumbnailUrl,
         playlistId: entry.playlistId,
@@ -210,18 +210,26 @@ const Player = () => {
       credentials: "include",
     }).catch(console.error);
 
-    // Interval to track watch time (every 30 seconds)
-    const interval = setInterval(() => {
+    // Watch time accumulator is managed via a ref and batched for the backend
+  }, [activeVideoId, loading, entry]);
+
+  // Handle accumulated watch time
+  const watchTimeRef = useRef(0);
+  const handleWatchTimeUpdate = useCallback((seconds) => {
+    watchTimeRef.current += seconds;
+
+    // Batch updates to backend every 30 actual watched seconds
+    if (watchTimeRef.current >= 30) {
+      const timeToLog = watchTimeRef.current;
+      watchTimeRef.current = 0; // reset
       fetch(`${BASE_URL}/api/user/track`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ watchTime: 30 }),
+        body: JSON.stringify({ watchTime: timeToLog }),
         credentials: "include",
       }).catch(console.error);
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [activeVideoId, loading, entry]);
+    }
+  }, []);
 
   const handleQuizComplete = async (score, totalQuestions, difficulty) => {
     try {
@@ -302,14 +310,7 @@ const Player = () => {
         setTranscriptLoading(false);
       }
     },
-    [
-      activeVideoId,
-      id,
-      requestedVideoId,
-      navigate,
-      isAuthenticated,
-      startGoogleSignIn,
-    ],
+    [activeVideoId, isAuthenticated, startGoogleSignIn],
   );
 
   const handleSummarize = async () => {
@@ -495,8 +496,11 @@ const Player = () => {
         <div className="w-full aspect-video bg-black lg:rounded-2xl shadow-lg overflow-hidden flex items-center justify-center relative z-10">
           {loading ? (
             <SkeletonLoader className="w-full h-full bg-gray-800" />
-          ) : embedUrl ? (
-            <VideoFrame embedUrl={embedUrl} />
+          ) : activeVideoId ? (
+            <VideoFrame
+              videoId={activeVideoId}
+              onWatchTimeUpdate={handleWatchTimeUpdate}
+            />
           ) : (
             <p className="text-gray-400">🎬 No video selected</p>
           )}

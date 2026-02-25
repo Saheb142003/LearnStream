@@ -3,3 +3,28 @@ body {
   margin: 0;
   padding: 0;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-slate-800 bg-slate-50;
+    font-family: "Outfit", "Inter", system-ui, sans-serif;
+  }
+}
+
+/* Force Recharts and SVGs to never highlight intensely on mobile tap */
+.recharts-wrapper,
+.recharts-surface,
+svg {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+*:focus {
+  outline: none !important;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */

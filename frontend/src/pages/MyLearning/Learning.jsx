@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Play, Clock, AlertCircle, BookOpen, ChevronRight } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import SkeletonLoader from "../../components/SkeletonLoader";
@@ -8,7 +8,6 @@ const BASE_URL = "";
 
 export default function Learning() {
   const { isAuthenticated, startGoogleSignIn } = useAuth();
-  const navigate = useNavigate();
 
   const [history, setHistory] = useState({
     continueWatching: [],
@@ -215,33 +214,40 @@ export default function Learning() {
                 You haven't created any playlists yet.
               </p>
               <Link
-                to="/feed"
+                to="/explore"
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 Explore Content
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-x-auto md:overflow-visible pb-6 md:pb-0 snap-x custom-scrollbar md:snap-none">
               {playlists.slice(0, 4).map((playlist) => (
                 <Link
                   key={playlist._id}
                   to={`/playlist/${playlist._id}`}
-                  className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
+                  className="snap-start shrink-0 w-72 md:w-auto md:shrink group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
                 >
                   <div className="aspect-video bg-gray-100 relative">
-                    {playlist.videos?.[0]?.thumbnailUrl ? (
+                    {playlist.videos?.length > 0 ? (
                       <img
-                        src={playlist.videos[0].thumbnailUrl}
+                        src={
+                          playlist.videos[0].thumbnailUrl ||
+                          `https://img.youtube.com/vi/${playlist.videos[0].videoId}/mqdefault.jpg`
+                        }
                         alt={playlist.title}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
                         <BookOpen size={32} />
+                        <span className="text-xs font-medium">
+                          Empty Playlist
+                        </span>
                       </div>
                     )}
-                    <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded-md">
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                    <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded-md backdrop-blur-sm">
                       {playlist.videos?.length || 0} videos
                     </div>
                   </div>

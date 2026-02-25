@@ -1,17 +1,36 @@
 import React from "react";
-import { Clock, CheckCircle, BookOpen, Flame } from "lucide-react";
+import { Clock, CheckCircle, BookOpen, Flame, PlayCircle } from "lucide-react";
 
-const StatCard = (
-  { title, value, icon: IconComponent, color, subtext } // eslint-disable-line no-unused-vars
-) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between">
-    <div>
-      <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-      <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
-      {subtext && <p className="text-xs text-gray-400 mt-2">{subtext}</p>}
+const colorStyles = {
+  indigo: { wrapper: "bg-indigo-50 text-indigo-600", dot: "#6366f1" },
+  emerald: { wrapper: "bg-emerald-50 text-emerald-600", dot: "#10b981" },
+  blue: { wrapper: "bg-blue-50 text-blue-600", dot: "#3b82f6" },
+  orange: { wrapper: "bg-orange-50 text-orange-600", dot: "#f97316" },
+};
+
+// eslint-disable-next-line no-unused-vars
+const StatCard = ({ title, value, icon: IconComponent, colorName }) => (
+  <div className="relative overflow-hidden bg-white/80 backdrop-blur-xl p-5 sm:p-7 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col justify-between transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 group">
+    <div
+      className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full opacity-20 blur-2xl transition-all duration-500 group-hover:scale-150 group-hover:opacity-30"
+      style={{ backgroundColor: colorStyles[colorName].dot }}
+    />
+
+    <div className="relative z-10 flex items-center justify-between w-full mb-6 mt-1">
+      <div
+        className={`p-3.5 rounded-2xl ${colorStyles[colorName].wrapper} flex items-center justify-center`}
+      >
+        <IconComponent className="w-6 h-6 sm:w-7 sm:h-7" strokeWidth={2.5} />
+      </div>
     </div>
-    <div className={`p-3 rounded-xl ${color}`}>
-      <IconComponent size={24} className="text-white" />
+
+    <div className="relative z-10">
+      <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight leading-none mb-2">
+        {value}
+      </h3>
+      <p className="text-[11px] sm:text-xs font-bold text-slate-500 tracking-wider uppercase">
+        {title}
+      </p>
     </div>
   </div>
 );
@@ -28,34 +47,30 @@ const StatsCards = ({ stats }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-8 mb-8">
       <StatCard
-        title="Total Watch Time"
+        title="Watch Time"
         value={formatTotalTime(stats.totalWatchTime)}
         icon={Clock}
-        color="bg-indigo-500"
-        subtext="Lifetime watch time"
+        colorName="indigo"
       />
       <StatCard
-        title="Quizzes Solved"
+        title="Quizzes"
         value={stats.totalQuizzesSolved}
         icon={CheckCircle}
-        color="bg-emerald-500"
-        subtext="Total quizzes completed"
+        colorName="emerald"
       />
       <StatCard
-        title="Topics Cleared"
-        value={stats.topicsCleared?.length || 0}
-        icon={BookOpen}
-        color="bg-blue-500"
-        subtext="Unique topics mastered"
+        title="Videos"
+        value={stats.totalVideosWatched || 0}
+        icon={PlayCircle}
+        colorName="blue"
       />
       <StatCard
-        title="Current Streak"
+        title="Streak"
         value={`${calculateStreak()} Days`}
         icon={Flame}
-        color="bg-orange-500"
-        subtext="Keep it up!"
+        colorName="orange"
       />
     </div>
   );

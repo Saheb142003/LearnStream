@@ -1,6 +1,31 @@
+import SkeletonLoader from "../../components/SkeletonLoader";
 import VideoItem from "./VideoItem";
 
-export default function PlaylistList({ playlists, onSelect, onRemove }) {
+export default function PlaylistList({
+  playlists,
+  loading,
+  onSelect,
+  onRemove,
+}) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mt-8">
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={i}
+            className="bg-white rounded-lg shadow-sm overflow-hidden h-72"
+          >
+            <SkeletonLoader className="w-full h-40 rounded-none mb-4" />
+            <div className="p-4 space-y-3">
+              <SkeletonLoader className="h-6 w-3/4 rounded-md" />
+              <SkeletonLoader className="h-4 w-1/2 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (!playlists || playlists.length === 0) {
     return (
       <p className="text-gray-500 italic text-center mt-10">

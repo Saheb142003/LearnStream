@@ -69,7 +69,7 @@ export default function Profile() {
           text: data.error || "Failed to update profile",
         });
       }
-    } catch (error) {
+    } catch {
       setMessage({
         type: "error",
         text: "An error occurred. Please try again.",
@@ -282,7 +282,7 @@ export default function Profile() {
                   </h3>
                   <p className="text-purple-700 text-sm">
                     {new Date(
-                      user.createdAt || user.lastLogin
+                      user.createdAt || user.lastLogin,
                     ).toLocaleDateString(undefined, {
                       year: "numeric",
                       month: "long",

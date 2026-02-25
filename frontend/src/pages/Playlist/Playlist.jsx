@@ -119,15 +119,13 @@ export default function Playlist() {
 
       <AddPlaylistForm onAdd={handleAdd} />
 
-      {loading && (
-        <p className="text-center text-indigo-500 animate-pulse">Loading...</p>
-      )}
       {error && (
         <p className="text-center text-red-600 font-semibold">{error}</p>
       )}
 
       <PlaylistList
         playlists={playlists}
+        loading={loading}
         onSelect={handleSelect}
         onRemove={handleRemove}
       />

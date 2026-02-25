@@ -37,15 +37,18 @@ export default function App() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Global App Tracking: Track app open time every minute
+  // Global App Tracking: Track app open time every minute, but only when visible
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch(`${BASE_URL}/api/user/track`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appOpenTime: 60 }),
-        credentials: "include",
-      }).catch(() => {}); // Fail silently if not logged in
+      // Only track if the tab is visible
+      if (document.visibilityState === "visible") {
+        fetch(`${BASE_URL}/api/user/track`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ appOpenTime: 60 }),
+          credentials: "include",
+        }).catch(() => {}); // Fail silently if not logged in
+      }
     }, 60000);
 
     return () => clearInterval(interval);

@@ -45,25 +45,22 @@ const PlaylistPanel = ({
 
   return (
     <div className="flex flex-col gap-2 pb-4">
-      {videos.map((video, index) => {
+      {videos.map((video) => {
         const isActive = video.videoId === activeVideoId;
 
         let containerClass = "";
         let textClass = "";
-        let indexClass = "";
 
         if (variant === "glass") {
           containerClass = isActive
             ? "bg-indigo-50/90 border-indigo-200 shadow-sm"
             : "bg-transparent border-transparent hover:bg-gray-100/80 hover:border-gray-200/50";
           textClass = isActive ? "text-indigo-700" : "text-gray-800";
-          indexClass = "text-gray-400";
         } else {
           containerClass = isActive
             ? "bg-indigo-50 border-indigo-200 shadow-sm"
             : "bg-white border-transparent hover:bg-gray-50 hover:border-gray-200";
           textClass = isActive ? "text-indigo-700" : "text-gray-700";
-          indexClass = "text-gray-400";
         }
 
         return (

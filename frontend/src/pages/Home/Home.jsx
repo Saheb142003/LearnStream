@@ -179,6 +179,7 @@ const WaveText = () => {
     return () => {
       document.head.removeChild(styleSheet);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
