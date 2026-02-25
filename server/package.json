@@ -2,11 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "build": "pip install -r requirements.txt --quiet || pip3 install -r requirements.txt --quiet || true",
+    "start": "nodemon server.js",
+    "prod": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,12 +23,12 @@
     "express-session": "^1.18.2",
     "mongoose": "^8.17.1",
     "node-fetch": "^3.3.2",
-    "nodemon": "^3.1.10",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "playwright": "^1.58.2",
-    "process": "^0.11.10",
-    "youtube-transcript": "^1.2.1",
-    "youtubei.js": "^16.0.1"
+    "process": "^0.11.10"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
+
