@@ -1,5 +1,6 @@
 // frontend/src/pages/VideoPlayer/components/SummaryBox.jsx
 import React from "react";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 const SummaryBox = ({ summary, loading }) => {
   return (
@@ -14,8 +15,8 @@ const SummaryBox = ({ summary, loading }) => {
           <p className="font-medium text-gray-600">Generating summary...</p>
         </div>
       ) : summary ? (
-        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-          <p className="whitespace-pre-wrap">{summary}</p>
+        <div className="prose prose-sm max-w-none">
+          <MarkdownRenderer content={summary} />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 text-gray-400">

@@ -1,17 +1,5 @@
 # LearnStream
 
-> **⚠️ SEEKING CONTRIBUTORS: Transcript Fetching Issue**
-> **Current Issue:** YouTube is actively blocking server-side transcript requests. My Playwright-based implementation can extract caption URLs but they return 0 bytes when fetched (even in browser context).
-> **Impact:** The transcript feature is currently non-functional for the video.
-> **Help Needed:** If you have experience with:
->
-> - YouTube's anti-bot measures and workarounds
-> - Browser automation (Playwright/Puppeteer)
-> - Third-party transcript APIs
-> - Client-side extraction methods
->
-> **Please contribute!** See [`server/src/services/transcriptService.js`](server/src/services/transcriptService.js) for current implementation.
-
 [🌐 Live Demo](https://learnstream.netlify.app) | [🐞 Report Bug](https://github.com/Saheb142003/LearnStream/issues) | [✨ Request Feature](https://github.com/Saheb142003/LearnStream/issues)
 
 ---
@@ -22,9 +10,7 @@
 ![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Node](https://img.shields.io/badge/Node.js-20.0-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 
-**LearnStream** is a premier **AI-powered educational platform** designed to transform passive video watching into an interactive learning experience. By leveraging advanced AI, LearnStream converts YouTube videos into comprehensive study guides, complete with transcripts, summaries, and interactive quizzes.
-
-It brings together **video learning**, **AI analysis**, **progress tracking**, and **distraction-free viewing** in a clean, modern interface.
+**LearnStream** is an **AI-powered educational platform** that transforms passive video watching into an interactive learning experience. Paste any YouTube URL and get an instant transcript, AI-generated summary, and auto-graded quiz — no distractions, no ads.
 
 - **Tech Stack:** React 19, Tailwind CSS, Node.js, Express, MongoDB, Google Gemini AI
 - **Live Site:** [https://learnstream.netlify.app](https://learnstream.netlify.app)
@@ -35,8 +21,10 @@ It brings together **video learning**, **AI analysis**, **progress tracking**, a
 
 |                **Home Page**                |                  **Feed**                  |
 | :-----------------------------------------: | :----------------------------------------: |
-|   ![Home Page](frontend/assets/Home.JPG)    |     ![Feed](frontend/assets/Feed.JPG)      |
+|   ![Home Page](frontend/assets/Home.png)    |     ![Feed](frontend/assets/Feed.JPG)      |
 | _Transform videos into knowledge instantly_ | _Discover and track your learning journey_ |
+
+---
 
 In the age of endless content, **retention** is the real challenge. Students and professionals watch hours of tutorials but often struggle to recall key concepts or test their understanding.
 
@@ -52,27 +40,28 @@ If you support this mission, leaving a ⭐ helps others discover the project!
 
 ## 🚀 Key Features
 
-| Feature                 | Description                                |
-| ----------------------- | ------------------------------------------ |
-| **AI Transcripts**      | Accurate, time-synced video transcripts    |
-| **Smart Summaries**     | AI-generated concise summaries of content  |
-| **Interactive Quizzes** | Auto-generated quizzes to test retention   |
-| **Distraction Free**    | Clean player interface focused on learning |
-| **Progress Tracking**   | Track watched videos and quiz scores       |
-| **Playlist Support**    | Import entire YouTube playlists            |
-| **Secure Auth**         | Google OAuth & Local Authentication        |
-| **Responsive Design**   | Works seamlessly on desktop and mobile     |
+| Feature                 | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| **AI Transcripts**      | Fetched via `youtube_transcript_api` — works reliably   |
+| **Smart Summaries**     | AI-generated summaries with full markdown rendering     |
+| **Interactive Quizzes** | Auto-generated 5-question quizzes to test retention     |
+| **Distraction Free**    | Clean player interface focused on learning              |
+| **Progress Tracking**   | Track watched videos, quiz scores, and learning streaks |
+| **Playlist Support**    | Import entire YouTube playlists                         |
+| **Secure Auth**         | Google OAuth & Local Authentication                     |
+| **Responsive Design**   | Works seamlessly on desktop and mobile                  |
+| **Rate Limited API**    | Per-IP & per-user limits protect backend from abuse     |
 
 ---
 
 ## 🧪 Tech & Architecture
 
-This project is built as a **Monorepo** containing both the Frontend and Backend.
+This project is a **Monorepo** with a React frontend and an Express backend.
 
 ### **Frontend**
 
 - **Framework:** React 19 (Vite)
-- **Styling:** Tailwind CSS, Framer Motion
+- **Styling:** Tailwind CSS v4, Framer Motion
 - **Icons:** Lucide React
 - **State/Routing:** React Router v7, Context API
 - **SEO:** React Helmet Async
@@ -82,27 +71,22 @@ This project is built as a **Monorepo** containing both the Frontend and Backend
 - **Runtime:** Node.js
 - **Framework:** Express.js
 - **Database:** MongoDB (Mongoose)
-- **AI Engine:** Google Gemini API
+- **AI Engine:** Google Gemini API (multi-model cascade with fallback)
 - **Authentication:** Passport.js (Google OAuth)
-- **Video Processing:** youtube-transcript, ytdl-core
-
-### **DevOps**
-
-- **Frontend Hosting:** Netlify
-- **Backend Hosting:** Render
-- **CI/CD:** GitHub Actions / Netlify Auto-Builds
-
----
+- **Transcript Engine:** `youtube_transcript_api` (Python ≥1.2.4) + Invidious fallback
+- **Concurrency:** In-memory semaphore, request queue, in-flight deduplication, LRU cache
 
 ## 🛠️ Getting Started
 
-Follow these steps to run LearnStream locally on your machine.
+Follow these steps to run LearnStream locally.
 
 ### Prerequisites
 
 - Node.js (v18+)
+- Python 3.9+ with `youtube_transcript_api` installed
 - MongoDB (Local or Atlas URI)
 - Google Gemini API Key
+- Google OAuth credentials
 
 ### Installation
 
@@ -113,68 +97,68 @@ Follow these steps to run LearnStream locally on your machine.
    cd LearnStream
    ```
 
-2. **Install Dependencies**
+2. **Install Python dependency** (required for transcript fetching)
 
    ```bash
-   # Install Frontend Dependencies
-   cd frontend
-   npm install
-
-   # Install Backend Dependencies
-   cd ../server
-   npm install
+   pip install youtube-transcript-api
    ```
 
-3. **Environment Setup**
-   Create a `.env` file in the `server` directory:
+3. **Install Node dependencies**
+
+   ```bash
+   # Frontend
+   cd frontend && npm install
+
+   # Backend
+   cd ../server && npm install
+   ```
+
+4. **Environment Setup** — create `server/.env`:
 
    ```env
    PORT=5000
+   CLIENT_URL=http://localhost:5173
    MONGO_URI=your_mongodb_connection_string
+
    GOOGLE_CLIENT_ID=your_google_client_id
    GOOGLE_CLIENT_SECRET=your_google_client_secret
-   COOKIE_KEY=your_session_secret
-   GEMINI_API_KEY=your_gemini_api_key
-   CLIENT_URL=http://localhost:5173
+   SESSION_SECRET=your_session_secret
+
+   GEMINI_API_KEY_SUMMARY=your_gemini_api_key
+   GEMINI_API_KEY_QUIZ=your_gemini_api_key
+   YOUTUBE_API_KEY=your_youtube_data_api_key
+
+   # Optional tuning (safe defaults apply without these)
+   TRANSCRIPT_CONCURRENCY=3
+   TRANSCRIPT_QUEUE_DEPTH=20
+   TRANSCRIPT_TIMEOUT_MS=30000
    ```
 
-4. **Run the Application**
-   Open two terminal windows:
-
-   _Terminal 1 (Backend):_
+5. **Run the application** — open two terminals:
 
    ```bash
-   cd server
-   npm start
+   # Terminal 1 — Backend
+   cd server && npm start
+
+   # Terminal 2 — Frontend
+   cd frontend && npm start
    ```
 
-   _Terminal 2 (Frontend):_
-
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-5. **Visit the App**
-   Open [http://localhost:5173](http://localhost:5173) in your browser.
+6. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
 ## 📝 License
 
-LearnStream is licensed under the **MIT License**.
-
-- **Free to use** for personal and educational purposes.
-- **Open Source** contributions are welcome.
-
-See: `LICENSE` file for details.
+LearnStream is licensed under the **MIT License** — free to use for personal and educational purposes. See `LICENSE` for details.
 
 ---
 
 ## 👥 Contributors
 
-- **Lead Developer:** Md Sahebuddin Ansari ([@Saheb142003](https://github.com/Saheb142003))
-- **Role:** Full Stack Developer
+- **Lead Developer:** Md Sahebuddin Ansari ([@Saheb142003](https://github.com/Saheb142003)) — Full Stack Developer
+
+Contributions are welcome! Feel free to open an issue or submit a pull request.
 
 ---
 

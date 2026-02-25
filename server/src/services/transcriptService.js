@@ -1,200 +1,237 @@
 // server/src/services/transcriptService.js
-import { chromium } from "playwright";
+//
+// Transcript engine:
+//   Layer 1 — Python youtube_transcript_api (primary)
+//   Layer 2 — Invidious public mirrors (fallback)
+//
+// Scalability:
+//   • LRU cache (200 entries)
+//   • In-flight deduplication — same video:lang Promise shared across callers
+//   • Concurrency semaphore — caps simultaneous Python processes
+//   • Queue with backpressure — 503 when queue is full
+//   • Per-process timeout with SIGTERM → SIGKILL escalation
 
-// Simple memory cache
-const CACHE_LIMIT = 100;
+import { runPython } from "../utils/runPython.js";
+import fetch from "node-fetch";
+
+// ─── Configuration ─────────────────────────────────────────────────────────────
+const MAX_CONCURRENT = Number(process.env.TRANSCRIPT_CONCURRENCY ?? 3);
+const MAX_QUEUE_DEPTH = Number(process.env.TRANSCRIPT_QUEUE_DEPTH ?? 20);
+const TIMEOUT_MS = Number(process.env.TRANSCRIPT_TIMEOUT_MS ?? 30_000);
+const CACHE_MAX_SIZE = 200;
+
+// ─── LRU cache ─────────────────────────────────────────────────────────────────
 const CACHE = new Map();
 
-function getFromCache(key) {
-  return CACHE.get(key);
+function cacheGet(key) {
+  if (!CACHE.has(key)) return null;
+  const value = CACHE.get(key);
+  CACHE.delete(key);
+  CACHE.set(key, value); // re-insert = promote to newest
+  return value;
 }
 
-function setInCache(key, value) {
-  if (CACHE.size >= CACHE_LIMIT) {
-    const firstKey = CACHE.keys().next().value;
-    CACHE.delete(firstKey);
-  }
+function cacheSet(key, value) {
+  if (CACHE.size >= CACHE_MAX_SIZE) CACHE.delete(CACHE.keys().next().value);
   CACHE.set(key, value);
 }
 
-const BROWSER_ARGS = [
-  "--no-sandbox",
-  "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage",
-  "--disable-accelerated-2d-canvas",
-  "--no-first-run",
-  "--no-zygote",
-  "--single-process",
-  "--disable-gpu",
+// ─── In-flight deduplication ───────────────────────────────────────────────────
+const IN_FLIGHT = new Map(); // key → Promise<string>
+
+// ─── Concurrency semaphore ─────────────────────────────────────────────────────
+let activeCount = 0;
+const waitQueue = [];
+
+function acquire() {
+  return new Promise((resolve, reject) => {
+    if (activeCount < MAX_CONCURRENT) {
+      activeCount++;
+      resolve();
+    } else if (waitQueue.length >= MAX_QUEUE_DEPTH) {
+      reject(
+        Object.assign(
+          new Error(
+            `Server is busy: transcript queue is full (limit ${MAX_QUEUE_DEPTH}). Please try again shortly.`,
+          ),
+          { code: "QUEUE_FULL" },
+        ),
+      );
+    } else {
+      waitQueue.push({ resolve, reject });
+    }
+  });
+}
+
+function release() {
+  if (waitQueue.length > 0) {
+    waitQueue.shift().resolve();
+  } else {
+    activeCount--;
+  }
+}
+
+// ─── Text cleaner ──────────────────────────────────────────────────────────────
+function cleanText(raw) {
+  return (raw || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\[Music\]/gi, "")
+    .replace(/\[Applause\]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// ─── Layer 1: Python youtube_transcript_api ────────────────────────────────────
+async function layer1_python(videoId, lang) {
+  const langCodes = [lang, "en", "en-US", "en-GB", "en-IN"]
+    .filter((v, i, a) => v && a.indexOf(v) === i)
+    .join(",");
+
+  const { stdout } = await runPython(
+    "fetch_transcript.py",
+    [videoId, langCodes],
+    TIMEOUT_MS,
+  );
+
+  const trimmed = stdout.trim();
+  if (!trimmed) throw new Error("Python script returned empty output");
+
+  const parsed = JSON.parse(trimmed);
+  if (parsed?.error) throw new Error(parsed.error);
+  if (!Array.isArray(parsed) || parsed.length === 0)
+    throw new Error("No transcript segments returned");
+
+  const text = parsed.map((s) => cleanText(s.text)).join(" ");
+  if (text.length < 30) throw new Error("Transcript text too short");
+
+  return text;
+}
+
+// ─── Layer 2: Invidious public API ─────────────────────────────────────────────
+const INVIDIOUS_INSTANCES = [
+  "https://invidious.drgns.space",
+  "https://inv.bp.projectsegfau.lt",
+  "https://invidious.flokinet.to",
+  "https://invidious.privacydev.net",
+  "https://yewtu.be",
+  "https://invidious.nerdvpn.de",
+  "https://inv.tux.pizza",
+  "https://invidious.nzgraham.com",
+  "https://inv.zzls.xyz",
 ];
 
-let browser; // Reuse globally for performance
+function parseVtt(vttText) {
+  const lines = vttText.split("\n");
+  const texts = [];
+  let inCue = false;
 
-async function initBrowser() {
-  if (browser) return browser;
-  browser = await chromium.launch({
-    headless: true,
-    args: BROWSER_ARGS,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // For deployment platforms
-  });
-  return browser;
-}
-
-function parseTranscriptData(captionData) {
-  try {
-    // Try JSON first (fmt=json3)
-    const json = JSON.parse(captionData);
-    if (json && json.events) {
-      return json.events
-        .map((event) => {
-          if (event.segs) {
-            return event.segs.map((seg) => seg.utf8).join("");
-          }
-          return "";
-        })
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.includes("-->")) {
+      inCue = true;
+      continue;
     }
-  } catch {
-    // Not JSON, try XML parsing
-    const regex = /<(?:text|p)[^>]*>(.*?)<\/(?:text|p)>/g;
-    let match;
-    const texts = [];
-
-    while ((match = regex.exec(captionData)) !== null) {
-      texts.push(match[1]);
+    if (!t) {
+      inCue = false;
+      continue;
     }
-
-    if (texts.length > 0) {
-      return texts
-        .join(" ")
-        .replace(/&#39;/g, "'")
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, "&")
-        .replace(/<[^>]*>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+    if (inCue && !/^\d+$/.test(t) && !t.startsWith("WEBVTT")) {
+      texts.push(t.replace(/<[^>]+>/g, ""));
     }
   }
 
-  throw new Error("Could not parse transcript data");
+  return cleanText(texts.join(" "));
 }
 
+async function layer2_invidious(videoId, lang) {
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const captRes = await fetch(`${instance}/api/v1/captions/${videoId}`, {
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!captRes.ok) continue;
+
+      const data = await captRes.json();
+      const captions = Array.isArray(data.captions) ? data.captions : [];
+      if (!captions.length) continue;
+
+      const track =
+        captions.find((c) => c.languageCode === lang) ||
+        captions.find((c) => c.languageCode?.startsWith("en")) ||
+        captions[0];
+      if (!track?.url) continue;
+
+      const trackRes = await fetch(instance + track.url, {
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!trackRes.ok) continue;
+
+      const vttText = await trackRes.text();
+      if (!vttText || vttText.length < 50) continue;
+
+      const text = parseVtt(vttText);
+      if (text && text.length > 50) return text;
+    } catch {
+      // instance down — try next
+    }
+  }
+
+  throw new Error("All Invidious instances failed");
+}
+
+// ─── Core fetch (runs once per unique key) ────────────────────────────────────
+async function doFetch(videoId, lang) {
+  await acquire();
+  try {
+    try {
+      return await layer1_python(videoId, lang);
+    } catch (e1) {
+      console.warn(`[Transcript] Primary failed for ${videoId}: ${e1.message}`);
+    }
+    return await layer2_invidious(videoId, lang);
+  } finally {
+    release();
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 export async function fetchTranscriptText(videoId, lang = "en") {
   const key = `${videoId}:${lang}`;
-  const cached = getFromCache(key);
+
+  const cached = cacheGet(key);
   if (cached) return cached;
 
-  const browserInstance = await initBrowser();
-  const context = await browserInstance.newContext({
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    extraHTTPHeaders: {
-      "Accept-Language": "en-US,en;q=0.9",
+  if (IN_FLIGHT.has(key)) return IN_FLIGHT.get(key);
+
+  const promise = doFetch(videoId, lang).then(
+    (text) => {
+      cacheSet(key, text);
+      IN_FLIGHT.delete(key);
+      return text;
     },
-  });
+    (err) => {
+      IN_FLIGHT.delete(key);
+      throw err;
+    },
+  );
 
-  const page = await context.newPage();
-
-  try {
-    // Stealth fingerprints to avoid detection
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-      window.chrome = { runtime: {} };
-    });
-
-    await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {
-      waitUntil: "domcontentloaded",
-      timeout: 20000,
-    });
-
-    // Wait for player to load
-    await page.waitForTimeout(2000);
-
-    // Extract caption URL in browser context
-    const result = await page.evaluate(
-      ({ lang }) => {
-        const match = document.documentElement.innerHTML.match(
-          /ytInitialPlayerResponse\s*=\s*({.+?});/,
-        );
-        if (!match) throw new Error("No player response found");
-
-        const playerResponse = JSON.parse(match[1]);
-        const captions =
-          playerResponse?.captions?.playerCaptionsTracklistRenderer
-            ?.captionTracks;
-        if (!captions?.length) throw new Error("No captions available");
-
-        // Smart language selection
-        let track =
-          captions.find((c) => c.languageCode === lang) ||
-          captions.find((c) => c.languageCode === "en") ||
-          captions[0];
-
-        return {
-          baseUrl: track.baseUrl,
-          lang: track.languageCode,
-        };
-      },
-      { lang },
-    );
-
-    console.log(`Found ${result.lang} transcript for ${videoId}`);
-
-    // Try JSON3 first, then XML if that fails
-    let captionData = null;
-
-    try {
-      const json3Url =
-        result.baseUrl +
-        (result.baseUrl.includes("?") ? "&" : "?") +
-        "fmt=json3";
-      captionData = await page.evaluate(async (url) => {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const text = await res.text();
-        return text.length > 0 ? text : null;
-      }, json3Url);
-    } catch (e) {
-      console.log("JSON3 fetch failed, trying XML...");
-    }
-
-    if (!captionData || captionData.length === 0) {
-      // Try XML format
-      captionData = await page.evaluate(async (url) => {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
-        return text;
-      }, result.baseUrl);
-    }
-
-    if (!captionData || captionData.length === 0) {
-      throw new Error("Empty transcript response from both JSON3 and XML");
-    }
-
-    console.log(`Received ${captionData.length} bytes of caption data`);
-
-    const text = parseTranscriptData(captionData);
-    setInCache(key, text);
-    console.log(
-      `✅ Successfully fetched ${text.length} chars of ${result.lang} transcript`,
-    );
-    return text;
-  } catch (e) {
-    console.error(`Transcript error for ${videoId}:`, e.message);
-    throw new Error(`Transcript unavailable: ${e.message}`);
-  } finally {
-    await page.close();
-    await context.close();
-  }
+  IN_FLIGHT.set(key, promise);
+  return promise;
 }
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  if (browser) {
-    await browser.close();
-  }
-  process.exit(0);
-});
+export function getTranscriptStats() {
+  return {
+    cacheSize: CACHE.size,
+    cacheCapacity: CACHE_MAX_SIZE,
+    inFlightCount: IN_FLIGHT.size,
+    activeWorkers: activeCount,
+    queuedRequests: waitQueue.length,
+    maxConcurrent: MAX_CONCURRENT,
+    maxQueueDepth: MAX_QUEUE_DEPTH,
+  };
+}

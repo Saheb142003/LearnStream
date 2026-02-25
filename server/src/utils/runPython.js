@@ -1,4 +1,11 @@
 // server/src/utils/runPython.js
+//
+// Spawns a Python script and returns { stdout, stderr }.
+// Supports:
+//   - Multiple Python executable candidates (cross-platform)
+//   - Configurable timeout with SIGTERM → SIGKILL escalation
+//   - UTF-8 enforced on all streams
+
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -6,59 +13,116 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const SCRIPTS_DIR = path.resolve(__dirname, "../../scripts");
+
 /**
  * Try multiple python executables so it works across platforms:
- * process.env.PYTHON_BIN -> python3 -> python -> py
- *
- * Returns: { stdout, stderr }
+ *   PYTHON_BIN env → python3 → python → py
  */
-function spawnProcess(exe, args, opts = {}) {
+const PYTHON_CANDIDATES = [
+  process.env.PYTHON_BIN,
+  "python3",
+  "python",
+  "py",
+].filter(Boolean);
+
+/**
+ * Spawn one Python attempt.
+ * @param {string}   exe        Python executable
+ * @param {string[]} args       [scriptPath, ...scriptArgs]
+ * @param {number}   timeoutMs  Max allowed wall-clock time
+ */
+function spawnWithTimeout(exe, args, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const child = spawn(exe, args, { ...opts });
+    const child = spawn(exe, args, {
+      cwd: SCRIPTS_DIR,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: "utf-8", // Force UTF-8 on Windows
+        PYTHONUTF8: "1", // Python 3.7+ UTF-8 mode
+      },
+    });
 
     let stdout = "";
     let stderr = "";
+    let timedOut = false;
 
-    child.stdout.on("data", (d) => (stdout += d.toString()));
-    child.stderr.on("data", (d) => (stderr += d.toString()));
+    // ── timeout logic ──────────────────────────────────────────────────────
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      // Escalate to SIGKILL after 3 s if still alive
+      setTimeout(() => child.kill("SIGKILL"), 3_000);
+    }, timeoutMs);
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
 
     child.on("error", (err) => {
-      // typical ENOENT here if exe not found
+      clearTimeout(timer);
       reject(err);
     });
 
     child.on("close", (code) => {
-      if (code !== 0) {
-        // include stderr for debugging
-        return reject(new Error(stderr || `Process exited with code ${code}`));
+      clearTimeout(timer);
+
+      if (timedOut) {
+        return reject(
+          Object.assign(new Error("Python process timed out"), {
+            code: "TIMEOUT",
+          }),
+        );
       }
+
+      if (code !== 0) {
+        return reject(
+          new Error(
+            stderr
+              ? `Python exited ${code}: ${stderr.slice(0, 300)}`
+              : `Python exited with code ${code}`,
+          ),
+        );
+      }
+
       resolve({ stdout, stderr });
     });
   });
 }
 
-export async function runPython(scriptName, args = []) {
-  const candidates = [process.env.PYTHON_BIN, "python3", "python", "py"].filter(
-    Boolean
-  );
-
-  const scriptPath = path.resolve(__dirname, "../../scripts", scriptName);
-  const cwd = path.resolve(__dirname, "../../scripts");
-
+/**
+ * Run a script from server/scripts/ trying each Python candidate in turn.
+ *
+ * @param {string}   scriptName  Filename inside server/scripts/
+ * @param {string[]} args        CLI arguments to pass to the script
+ * @param {number}   timeoutMs   Max execution time in ms (default 30 s)
+ */
+export async function runPython(scriptName, args = [], timeoutMs = 30_000) {
+  const scriptPath = path.join(SCRIPTS_DIR, scriptName);
   let lastErr = null;
-  for (const exe of candidates) {
+
+  for (const exe of PYTHON_CANDIDATES) {
     try {
-      const result = await spawnProcess(exe, [scriptPath, ...args], { cwd });
-      return result; // { stdout, stderr }
+      return await spawnWithTimeout(exe, [scriptPath, ...args], timeoutMs);
     } catch (err) {
-      lastErr = err;
-      // try next candidate
+      // ENOENT → executable not found, try next candidate
+      if (err.code === "ENOENT") {
+        lastErr = err;
+        continue;
+      }
+      // Any other error (timeout, non-zero exit, etc.) is real — propagate immediately
+      throw err;
     }
   }
 
   throw new Error(
-    `Failed to run Python script "${scriptName}". Tried: ${candidates.join(
-      ", "
-    )}. Last error: ${lastErr?.message || "unknown"}`
+    `No Python interpreter found. Tried: ${PYTHON_CANDIDATES.join(", ")}. ` +
+      `Set PYTHON_BIN in .env. Last error: ${lastErr?.message || "unknown"}`,
   );
 }
