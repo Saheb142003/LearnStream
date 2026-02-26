@@ -1,8 +1,9 @@
 // server/src/services/transcriptService.js
 //
-// Transcript engine:
-//   Layer 1 — Python youtube_transcript_api (primary)
-//   Layer 2 — Invidious public mirrors (fallback)
+// Transcript engine — 3 layers:
+//   Layer 1 — Python youtube_transcript_api (primary, supports cookies for cloud IPs)
+//   Layer 2 — Invidious public mirrors (parallel race, not serial)
+//   Layer 3 — Supadata.ai transcript API (set SUPADATA_API_KEY in env)
 //
 // Scalability:
 //   • LRU cache (200 entries)
@@ -27,7 +28,7 @@ function cacheGet(key) {
   if (!CACHE.has(key)) return null;
   const value = CACHE.get(key);
   CACHE.delete(key);
-  CACHE.set(key, value); // re-insert = promote to newest
+  CACHE.set(key, value);
   return value;
 }
 
@@ -37,7 +38,7 @@ function cacheSet(key, value) {
 }
 
 // ─── In-flight deduplication ───────────────────────────────────────────────────
-const IN_FLIGHT = new Map(); // key → Promise<string>
+const IN_FLIGHT = new Map();
 
 // ─── Concurrency semaphore ─────────────────────────────────────────────────────
 let activeCount = 0;
@@ -87,6 +88,8 @@ function cleanText(raw) {
 }
 
 // ─── Layer 1: Python youtube_transcript_api ────────────────────────────────────
+// Set YOUTUBE_COOKIES_TXT env var on Render to bypass cloud IP blocks.
+// See fetch_transcript.py for instructions on getting cookies.
 async function layer1_python(videoId, lang) {
   const langCodes = [lang, "en", "en-US", "en-GB", "en-IN"]
     .filter((v, i, a) => v && a.indexOf(v) === i)
@@ -112,18 +115,27 @@ async function layer1_python(videoId, lang) {
   return text;
 }
 
-// ─── Layer 2: Invidious public API ─────────────────────────────────────────────
+// ─── Layer 2: Invidious public API — parallel race ─────────────────────────────
+// Runs all instances concurrently and returns the first success.
+// This avoids the 96-second worst-case serial timeout.
 const INVIDIOUS_INSTANCES = [
-  "https://invidious.drgns.space",
-  "https://inv.bp.projectsegfau.lt",
-  "https://invidious.flokinet.to",
+  "https://iv.datura.network",
   "https://invidious.privacydev.net",
+  "https://invidious.flokinet.to",
+  "https://yt.cdaut.de",
+  "https://invidious.perennialte.ch",
   "https://yewtu.be",
-  "https://invidious.nerdvpn.de",
   "https://inv.tux.pizza",
-  "https://invidious.nzgraham.com",
-  "https://inv.zzls.xyz",
+  "https://invidious.drgns.space",
+  "https://invidious.nerdvpn.de",
+  "https://iv.melmac.space",
+  "https://invidious.privacyredirect.com",
+  "https://invidious.jing.rocks",
+  "https://invidious.lunar.icu",
+  "https://invidious.reallyaweso.me",
 ];
+
+const INVIDIOUS_TIMEOUT_MS = 6_000;
 
 function parseVtt(vttText) {
   const lines = vttText.split("\n");
@@ -148,52 +160,127 @@ function parseVtt(vttText) {
   return cleanText(texts.join(" "));
 }
 
+async function tryOneInvidious(instance, videoId, lang) {
+  const captRes = await fetch(`${instance}/api/v1/captions/${videoId}`, {
+    signal: AbortSignal.timeout(INVIDIOUS_TIMEOUT_MS),
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!captRes.ok) throw new Error(`${instance} captions ${captRes.status}`);
+
+  const data = await captRes.json();
+  const captions = Array.isArray(data.captions) ? data.captions : [];
+  if (!captions.length) throw new Error(`${instance} no captions`);
+
+  const track =
+    captions.find((c) => c.languageCode === lang) ||
+    captions.find((c) => c.languageCode?.startsWith("en")) ||
+    captions[0];
+  if (!track?.url) throw new Error(`${instance} no track url`);
+
+  // track.url is a relative path like /api/v1/captions/...?label=...
+  const vttUrl = track.url.startsWith("http")
+    ? track.url
+    : `${instance}${track.url}`;
+  const trackRes = await fetch(vttUrl, {
+    signal: AbortSignal.timeout(INVIDIOUS_TIMEOUT_MS),
+  });
+  if (!trackRes.ok) throw new Error(`${instance} vtt ${trackRes.status}`);
+
+  const vttText = await trackRes.text();
+  if (!vttText || vttText.length < 50)
+    throw new Error(`${instance} vtt too short`);
+
+  const text = parseVtt(vttText);
+  if (!text || text.length < 50)
+    throw new Error(`${instance} parsed text too short`);
+
+  return text;
+}
+
 async function layer2_invidious(videoId, lang) {
-  for (const instance of INVIDIOUS_INSTANCES) {
-    try {
-      const captRes = await fetch(`${instance}/api/v1/captions/${videoId}`, {
-        signal: AbortSignal.timeout(8_000),
-      });
-      if (!captRes.ok) continue;
+  // Race all instances — first non-rejected result wins
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let failures = 0;
+    const total = INVIDIOUS_INSTANCES.length;
 
-      const data = await captRes.json();
-      const captions = Array.isArray(data.captions) ? data.captions : [];
-      if (!captions.length) continue;
-
-      const track =
-        captions.find((c) => c.languageCode === lang) ||
-        captions.find((c) => c.languageCode?.startsWith("en")) ||
-        captions[0];
-      if (!track?.url) continue;
-
-      const trackRes = await fetch(instance + track.url, {
-        signal: AbortSignal.timeout(8_000),
-      });
-      if (!trackRes.ok) continue;
-
-      const vttText = await trackRes.text();
-      if (!vttText || vttText.length < 50) continue;
-
-      const text = parseVtt(vttText);
-      if (text && text.length > 50) return text;
-    } catch {
-      // instance down — try next
+    for (const instance of INVIDIOUS_INSTANCES) {
+      tryOneInvidious(instance, videoId, lang).then(
+        (text) => {
+          if (!settled) {
+            settled = true;
+            resolve(text);
+          }
+        },
+        () => {
+          failures++;
+          if (failures === total && !settled) {
+            settled = true;
+            reject(new Error("All Invidious instances failed"));
+          }
+        },
+      );
     }
-  }
+  });
+}
 
-  throw new Error("All Invidious instances failed");
+// ─── Layer 3: Supadata.ai transcript API ──────────────────────────────────────
+// Free tier: 100 requests/month
+// Set SUPADATA_API_KEY in Render environment to enable.
+// Get key at: https://supadata.ai
+async function layer3_supadata(videoId) {
+  const apiKey = process.env.SUPADATA_API_KEY;
+  if (!apiKey) throw new Error("SUPADATA_API_KEY not set");
+
+  const res = await fetch(
+    `https://api.supadata.ai/v1/youtube/transcript?videoId=${videoId}&lang=en&text=true`,
+    {
+      headers: {
+        "x-api-key": apiKey,
+        "User-Agent": "LearnStream/1.0",
+      },
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+
+  if (!res.ok) throw new Error(`Supadata responded ${res.status}`);
+
+  const data = await res.json();
+
+  // Supadata returns { content, lang } where content is plain text, or
+  // { segments: [{text, start, duration}] } depending on ?text=true
+  const text =
+    typeof data.content === "string"
+      ? data.content
+      : Array.isArray(data.segments)
+        ? data.segments.map((s) => s.text).join(" ")
+        : null;
+
+  if (!text || text.length < 30)
+    throw new Error("Supadata returned empty transcript");
+  return cleanText(text);
 }
 
 // ─── Core fetch (runs once per unique key) ────────────────────────────────────
 async function doFetch(videoId, lang) {
   await acquire();
   try {
+    // Layer 1: Python
     try {
       return await layer1_python(videoId, lang);
     } catch (e1) {
-      console.warn(`[Transcript] Primary failed for ${videoId}: ${e1.message}`);
+      console.warn(`[Transcript] L1 failed for ${videoId}: ${e1.message}`);
     }
-    return await layer2_invidious(videoId, lang);
+
+    // Layer 2: Invidious (parallel race)
+    try {
+      return await layer2_invidious(videoId, lang);
+    } catch (e2) {
+      console.warn(`[Transcript] L2 failed for ${videoId}: ${e2.message}`);
+    }
+
+    // Layer 3: Supadata
+    return await layer3_supadata(videoId);
   } finally {
     release();
   }
