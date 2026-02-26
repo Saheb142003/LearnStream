@@ -1,3 +1,7 @@
 
 # YouTube session cookies (sensitive, never commit)
 scripts/cookies.txt
+
+# Local-only full versions (with L1 Python + L2 Invidious layers)
+*.full.js
+*.full.py
