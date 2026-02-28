@@ -1,10 +1,7 @@
 // server/src/config/passport.js
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import dotenv from "dotenv";
 import User from "../models/User.js";
-
-dotenv.config(); // Ensure env variables are loaded
 
 // ✅ Safety check for required environment variables
 if (
@@ -13,7 +10,7 @@ if (
   !process.env.SERVER_URL
 ) {
   throw new Error(
-    "❌ Missing required Google OAuth environment variables. Please check .env file."
+    "❌ Missing required Google OAuth environment variables. Please check .env file.",
   );
 }
 
@@ -45,8 +42,8 @@ passport.use(
         console.error("❌ Error in GoogleStrategy:", err);
         return done(err, null);
       }
-    }
-  )
+    },
+  ),
 );
 
 // Store only user.id in session

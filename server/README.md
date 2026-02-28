@@ -123,13 +123,13 @@ Request
 
 ## 🤖 AI Engine
 
-Gemini calls use a model cascade so a single overloaded model never fails the user:
+Gemini calls now exclusively use the Gemini 2.5 Flash model:
 
 ```
-gemini-2.0-flash  →  gemini-1.5-flash  →  gemini-flash-latest  →  gemini-1.5-flash-8b
+gemini-2.5-flash
 ```
 
-Each model gets 2 attempts with a 1.5 s backoff on 503 / 429 before falling through.
+The model gets 2 attempts with a 1.5 s backoff on 503 / 429 if capacity issues occur.
 
 ---
 

@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import UserDropdown from "./UserDropdown.jsx";
 
-import Logo from "../../../assets/LS_logo.png";
+import Logo from "../../../assets/LS_icon.svg";
 
 const TAGLINES = [
   "Your AI Companion for Smarter Learning",
@@ -44,7 +44,7 @@ function AnimatedTaglineInline({ taglines = TAGLINES, style }) {
       setDisplay(taglines[index]);
       timer.current = setTimeout(
         () => setIndex((s) => (s + 1) % taglines.length),
-        3000
+        3000,
       );
       return;
     }
@@ -108,8 +108,8 @@ function AnimatedTaglineInline({ taglines = TAGLINES, style }) {
     anim === "typing"
       ? { ...typingStyle, ...style }
       : anim === "slide"
-      ? { ...slideStyle, ...style }
-      : { ...flipStyle, ...style };
+        ? { ...slideStyle, ...style }
+        : { ...flipStyle, ...style };
 
   return (
     <span

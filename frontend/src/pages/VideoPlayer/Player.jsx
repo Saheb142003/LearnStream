@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { Play, ChevronLeft, ChevronRight, X, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, List } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import VideoFrame from "./components/VideoFrame";
@@ -19,8 +19,42 @@ import PlaylistPanel from "./components/PlaylistPanel";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import { useAuth } from "../../hooks/useAuth";
 
+// ─── sessionStorage helpers ────────────────────────────────────────────────────
+const STORE_KEYS = (videoId) => ({
+  transcript: `ls_transcript_${videoId}`,
+  summary: `ls_summary_${videoId}`,
+  quiz: `ls_quiz_${videoId}`,
+  entry: `ls_entry_${videoId}`,
+});
+
+function storageGet(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* quota */
+  }
+}
+
+function storageClear(...keys) {
+  keys.forEach((k) => {
+    try {
+      sessionStorage.removeItem(k);
+    } catch {
+      /**/
+    }
+  });
+}
+
 const BASE_URL = "";
-const AUTH_ROUTE = "/profile";
 
 function isMongoObjectId(str) {
   return /^[0-9a-fA-F]{24}$/.test(str);
@@ -37,9 +71,54 @@ const Player = () => {
 
   const search = new URLSearchParams(location.search);
   const requestedVideoId = search.get("v") || "";
+  const requestedTime = parseInt(search.get("t") || "0", 10);
 
-  const [entry, setEntry] = useState(null);
-  const [activeVideoId, setActiveVideoId] = useState("");
+  const handleTimeUpdate = useCallback((currentTime) => {
+    try {
+      const raw = sessionStorage.getItem("ls_now_playing");
+      if (raw) {
+        const np = JSON.parse(raw);
+        const ts = Math.floor(currentTime);
+        let newUrl = np.url;
+        if (newUrl.match(/[?&]t=\d+/)) {
+          newUrl = newUrl.replace(/([?&])t=\d+/, `$1t=${ts}`);
+        } else {
+          newUrl += (newUrl.includes("?") ? "&" : "?") + `t=${ts}`;
+        }
+        if (np.url !== newUrl) {
+          np.url = newUrl;
+          sessionStorage.setItem("ls_now_playing", JSON.stringify(np));
+        }
+      }
+    } catch {}
+  }, []);
+
+  const [entry, setEntry] = useState(() => {
+    if (!id) return null;
+    if (isYouTubeId(id)) {
+      const cached = storageGet(STORE_KEYS(id).entry);
+      if (cached) return cached;
+    }
+    const reqVid = requestedVideoId || null;
+    if (reqVid) {
+      const cached = storageGet(STORE_KEYS(reqVid).entry);
+      if (cached) return cached;
+    }
+    return null;
+  });
+
+  const [activeVideoId, setActiveVideoId] = useState(() => {
+    if (!id) return "";
+    if (isYouTubeId(id)) {
+      if (storageGet(STORE_KEYS(id).entry)) return id;
+    }
+    const reqVid = requestedVideoId || null;
+    if (reqVid) {
+      if (storageGet(STORE_KEYS(reqVid).entry)) return reqVid;
+    }
+    return "";
+  });
+
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [viewMode, setViewMode] = useState("transcript"); // transcript | summary | quiz
@@ -64,6 +143,20 @@ const Player = () => {
   // keep an AbortController so we can cancel previous requests
   const controllerRef = useRef(null);
 
+  // ── Rehydrate ALL persisted data when activeVideoId changes ───────────────
+  useEffect(() => {
+    if (!activeVideoId) return;
+    const keys = STORE_KEYS(activeVideoId);
+
+    // Restore entry (title / thumbnail) immediately — avoids API round-trip on return
+    const savedEntry = storageGet(keys.entry);
+    if (savedEntry) setEntry(savedEntry);
+
+    setTranscript(storageGet(keys.transcript) || "");
+    setSummary(storageGet(keys.summary) || "");
+    setQuiz(Array.isArray(storageGet(keys.quiz)) ? storageGet(keys.quiz) : []);
+  }, [activeVideoId]);
+
   const embedUrl = useMemo(
     () =>
       activeVideoId
@@ -77,6 +170,28 @@ const Player = () => {
     if (!id) return;
 
     async function loadFromPlaylist(entryId) {
+      // ── Check entry cache first — skips the API call on return ─────────────
+      const chosenId = requestedVideoId || null;
+      if (chosenId) {
+        const cached = storageGet(STORE_KEYS(chosenId).entry);
+        if (cached && cached.playlistId === entryId) {
+          setEntry(cached);
+          setActiveVideoId(chosenId);
+          // Playlist videos may not be cached — fetch quietly in background
+          fetch(`${BASE_URL}/api/playlists/${entryId}`, {
+            credentials: "include",
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (Array.isArray(data.videos)) setPlaylistVideos(data.videos);
+              if (data.title) setPlaylistTitle(data.title);
+            })
+            .catch(() => {});
+          setLoading(false);
+          return;
+        }
+      }
+
       setLoading(true);
       setErr("");
       try {
@@ -85,7 +200,6 @@ const Player = () => {
         });
 
         if (res.status === 401) {
-          // If unauthorized for playlist, redirect to auth
           startGoogleSignIn();
           return;
         }
@@ -107,22 +221,18 @@ const Player = () => {
 
         if (!chosenVideo) throw new Error("No videos found in playlist");
 
-        setPlaylistVideos(videos); // Store playlist videos
-        setPlaylistTitle(data.title || "Playlist"); // Store playlist title
+        setPlaylistVideos(videos);
+        setPlaylistTitle(data.title || "Playlist");
 
-        setEntry({
+        const newEntry = {
           title: chosenVideo.title || "Untitled Video",
           videoId: chosenVideo.videoId,
           thumbnailUrl: chosenVideo.thumbnailUrl,
           playlistId: entryId,
-        });
+        };
+        setEntry(newEntry);
         setActiveVideoId(chosenVideo.videoId);
-        setTranscript(""); // reset transcript
-        setSummary("");
-        setQuiz([]);
-
-        // Auto-switch to playlist view if it's a playlist
-        // setViewMode("playlist");
+        // State will be rehydrated from sessionStorage by the activeVideoId effect.
       } catch (e) {
         setErr(e.message);
       } finally {
@@ -135,6 +245,17 @@ const Player = () => {
     }
 
     if (isYouTubeId(id)) {
+      // ── Check entry cache — instant restore on return ──────────────────────
+      const cached = storageGet(STORE_KEYS(id).entry);
+      if (cached) {
+        setEntry(cached);
+        setActiveVideoId(id);
+        setPlaylistVideos([]);
+        setIsPlaylistOpen(false);
+        setLoading(false);
+        return;
+      }
+
       // Check if video details were passed via navigation state
       if (location.state?.video) {
         const vid = location.state.video;
@@ -146,11 +267,9 @@ const Player = () => {
             `https://img.youtube.com/vi/${vid.videoId}/hqdefault.jpg`,
         });
         setActiveVideoId(vid.videoId);
-        setPlaylistVideos([]); // No playlist
+        setPlaylistVideos([]);
         setIsPlaylistOpen(false);
-        setTranscript("");
-        setSummary("");
-        setQuiz([]);
+        // State will be rehydrated from sessionStorage by the activeVideoId effect.
         setLoading(false);
         return;
       }
@@ -159,14 +278,10 @@ const Player = () => {
       (async () => {
         setLoading(true);
         try {
-          // Set initial state
           setEntry({ title: "Loading title...", videoId: id });
           setActiveVideoId(id);
           setPlaylistVideos([]);
           setIsPlaylistOpen(false);
-          setTranscript("");
-          setSummary("");
-          setQuiz([]);
 
           const res = await fetch(`${BASE_URL}/api/videos/${id}/details`);
           if (!res.ok) throw new Error("Failed to fetch details");
@@ -193,9 +308,26 @@ const Player = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, requestedVideoId, navigate, startGoogleSignIn]);
 
-  // Tracking Logic - Tracking initial view
+  // Tracking Logic - Tracking initial view + save Now Playing & entry cache
   useEffect(() => {
     if (!activeVideoId || loading || !entry) return;
+
+    // Cache entry so returning to this video is instant (no API round-trip)
+    storageSet(STORE_KEYS(activeVideoId).entry, entry);
+
+    // Persist current player URL so the Now Playing widget can link back
+    try {
+      sessionStorage.setItem(
+        "ls_now_playing",
+        JSON.stringify({
+          url: window.location.pathname + window.location.search,
+          title: entry.title,
+          videoId: activeVideoId,
+        }),
+      );
+    } catch {
+      /* quota */
+    }
 
     // Track initial video view & update learning progress
     fetch(`${BASE_URL}/api/user/track`, {
@@ -252,6 +384,7 @@ const Player = () => {
   };
 
   // fetch transcript (abortable, handles 401, 404, friendly messages)
+  // Checks sessionStorage first — only hits the network if nothing is cached.
   const fetchTranscriptForActive = useCallback(
     async (opts = {}) => {
       if (!activeVideoId) {
@@ -262,6 +395,14 @@ const Player = () => {
       // Enforce Auth for Transcription
       if (!isAuthenticated) {
         startGoogleSignIn();
+        return;
+      }
+
+      // ── Return instantly from storage if already fetched ───────────────────
+      const keys = STORE_KEYS(activeVideoId);
+      const saved = storageGet(keys.transcript);
+      if (saved) {
+        setTranscript(saved);
         return;
       }
 
@@ -299,7 +440,9 @@ const Player = () => {
           return;
         }
 
-        setTranscript(data.transcript || "");
+        const text = data.transcript || "";
+        setTranscript(text);
+        if (text) storageSet(keys.transcript, text); // persist
         setErr("");
       } catch (e) {
         if (e.name === "AbortError") return;
@@ -324,7 +467,14 @@ const Player = () => {
       return;
     }
     setViewMode("summary");
-    // if (summary) return; // Allow regeneration
+
+    // ── Return instantly if summary already saved ──────────────────────────
+    const keys = STORE_KEYS(activeVideoId);
+    const savedSummary = storageGet(keys.summary);
+    if (savedSummary) {
+      setSummary(savedSummary);
+      return;
+    }
 
     setSummaryLoading(true);
     try {
@@ -336,6 +486,7 @@ const Player = () => {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setSummary(data.summary);
+      storageSet(keys.summary, data.summary); // persist
     } catch (e) {
       setErr(e.message || "Failed to generate summary");
     } finally {
@@ -343,15 +494,23 @@ const Player = () => {
     }
   };
 
-  const handleQuizify = async (difficulty = "medium") => {
+  const handleQuizify = async (difficulty = "medium", force = false) => {
     if (!summary) {
       setErr("Please generate summary first to create a quiz.");
       return;
     }
     setViewMode("quiz");
 
-    // Always regenerate quiz if requested, or maybe check if already exists for this difficulty?
-    // For now let's allow regenerating
+    // ── Return instantly if quiz for this video is already saved ──────────
+    const keys = STORE_KEYS(activeVideoId);
+    const savedQuiz = storageGet(keys.quiz);
+    if (!force && Array.isArray(savedQuiz) && savedQuiz.length > 0) {
+      setQuiz(savedQuiz);
+      return;
+    }
+    // Clear stale cache before re-generating (force retry)
+    if (force) storageClear(keys.quiz);
+
     setQuizLoading(true);
     setQuiz([]);
     try {
@@ -363,6 +522,7 @@ const Player = () => {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setQuiz(data.quiz);
+      storageSet(keys.quiz, data.quiz); // persist
     } catch (e) {
       setErr(e.message || "Failed to generate quiz");
     } finally {
@@ -384,11 +544,7 @@ const Player = () => {
         videoId: nextVideo.videoId,
         thumbnailUrl: nextVideo.thumbnailUrl,
       }));
-      // Reset states
-      setTranscript("");
-      setSummary("");
-      setQuiz([]);
-      // Update URL seamlessly
+      // URL update triggers activeVideoId effect which rehydrates from storage
       navigate(`/player/${entry.playlistId}?v=${nextVideo.videoId}`, {
         replace: true,
       });
@@ -409,10 +565,7 @@ const Player = () => {
         videoId: prevVideo.videoId,
         thumbnailUrl: prevVideo.thumbnailUrl,
       }));
-      // Reset states
-      setTranscript("");
-      setSummary("");
-      setQuiz([]);
+      // URL update triggers activeVideoId effect which rehydrates from storage
       navigate(`/player/${entry.playlistId}?v=${prevVideo.videoId}`, {
         replace: true,
       });
@@ -430,9 +583,7 @@ const Player = () => {
       videoId: video.videoId,
       thumbnailUrl: video.thumbnailUrl,
     }));
-    setTranscript("");
-    setSummary("");
-    setQuiz([]);
+    // activeVideoId change triggers rehydration from sessionStorage
     navigate(`/player/${entry.playlistId}?v=${videoId}`, { replace: true });
   };
 
@@ -498,8 +649,11 @@ const Player = () => {
             <SkeletonLoader className="w-full h-full bg-gray-800" />
           ) : activeVideoId ? (
             <VideoFrame
+              key={activeVideoId}
               videoId={activeVideoId}
               onWatchTimeUpdate={handleWatchTimeUpdate}
+              startAt={requestedTime}
+              onTimeUpdate={handleTimeUpdate}
             />
           ) : (
             <p className="text-gray-400">🎬 No video selected</p>
@@ -627,7 +781,7 @@ const Player = () => {
                   <QuizBox
                     quiz={quiz}
                     loading={quizLoading}
-                    onRetry={(diff) => handleQuizify(diff)}
+                    onRetry={(diff) => handleQuizify(diff, true)}
                     onQuizComplete={handleQuizComplete}
                   />
                 </motion.div>
@@ -639,7 +793,14 @@ const Player = () => {
         {/* Footer / Back Button */}
         <div className="p-3 lg:p-4 border-t border-gray-100 bg-white">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              try {
+                sessionStorage.removeItem("ls_now_playing");
+              } catch {
+                /**/
+              }
+              navigate(-1);
+            }}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl shadow-sm border border-gray-200 hover:bg-gray-100 hover:text-indigo-600 transition-all duration-200"
           >
             <span>⬅</span>{" "}

@@ -1,7 +1,12 @@
 // frontend/src/pages/VideoPlayer/components/VideoFrame.jsx
 import React, { useEffect, useRef } from "react";
 
-const VideoFrame = ({ videoId, onWatchTimeUpdate }) => {
+const VideoFrame = ({
+  videoId,
+  onWatchTimeUpdate,
+  startAt = 0,
+  onTimeUpdate,
+}) => {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const timerRef = useRef(null);
@@ -20,6 +25,8 @@ const VideoFrame = ({ videoId, onWatchTimeUpdate }) => {
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
+          start: Math.floor(startAt),
+          autoplay: 1,
         },
         events: {
           onStateChange: (event) => {
@@ -29,12 +36,18 @@ const VideoFrame = ({ videoId, onWatchTimeUpdate }) => {
                   if (onWatchTimeUpdate) {
                     onWatchTimeUpdate(1);
                   }
+                  if (onTimeUpdate && playerRef.current?.getCurrentTime) {
+                    onTimeUpdate(playerRef.current.getCurrentTime());
+                  }
                 }, 1000);
               }
             } else {
               if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
+              }
+              if (onTimeUpdate && playerRef.current?.getCurrentTime) {
+                onTimeUpdate(playerRef.current.getCurrentTime());
               }
             }
           },
@@ -76,7 +89,17 @@ const VideoFrame = ({ videoId, onWatchTimeUpdate }) => {
 
   return (
     <div className="w-full h-full relative bg-black rounded-xl overflow-hidden shadow-lg">
-      <div ref={containerRef} className="w-full h-full" />
+      <iframe
+        ref={containerRef}
+        id={`yt-player-${videoId}`}
+        className="w-full h-full"
+        src={`https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&showinfo=0&iv_load_policy=3&start=${Math.floor(
+          startAt,
+        )}&autoplay=1`}
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      ></iframe>
     </div>
   );
 };

@@ -19,6 +19,7 @@ import Player from "./pages/VideoPlayer/Player"; // <-- new fancy player
 import Contact from "./pages/Contact/Contact";
 
 import About from "./pages/About/About";
+import NowPlayingWidget from "./components/NowPlayingWidget";
 
 const BASE_URL = "";
 
@@ -78,6 +79,8 @@ export default function App() {
         </Routes>
       </div>
       <Footer />
+      {/* Global floating Now Playing card — renders on all pages except the player */}
+      <NowPlayingWidget />
     </div>
   );
 }

@@ -12,53 +12,55 @@ const cleanTranscript = (transcript) => {
 };
 
 /**
- * Try models in order, retrying on 503 with exponential backoff.
- * Returns the generated text string.
+ * Run the prompt through working models in order.
+ * Only 503 / 429 (capacity / rate-limit) trigger a single same-model retry.
+ * Any other error immediately falls through to the next model.
  */
-const MODEL_CASCADE = [
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-flash-latest",
-  "gemini-1.5-flash-8b",
-];
+const MODELS = ["gemini-2.5-flash"];
 
 async function generateWithFallback(apiKey, prompt, generationConfig = {}) {
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  for (const modelName of MODEL_CASCADE) {
-    // Each model gets up to 2 attempts (handles transient 503)
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          generationConfig,
-        });
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        if (text) {
-          return text;
-        }
-      } catch (err) {
-        const is503 = err?.status === 503 || err?.message?.includes("503");
-        const is429 = err?.status === 429 || err?.message?.includes("429");
+  for (const modelName of MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig,
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      if (text) return text;
+    } catch (err) {
+      const isCapacity =
+        err?.status === 503 ||
+        err?.status === 429 ||
+        err?.message?.includes("503") ||
+        err?.message?.includes("429") ||
+        err?.message?.toLowerCase().includes("fetch") ||
+        err?.message?.toLowerCase().includes("network");
 
-        if ((is503 || is429) && attempt === 1) {
-          // Brief wait then retry same model
-          await new Promise((r) => setTimeout(r, 1500));
-          continue;
+      if (isCapacity) {
+        // One brief wait, then try the same model once more
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig,
+          });
+          const result = await model.generateContent(prompt);
+          const text = result.response.text();
+          if (text) return text;
+        } catch {
+          /* fall through to next model */
         }
-
-        // Non-retriable error on this model → try next model
-        console.warn(
-          `[AI] ${modelName} failed (attempt ${attempt}): ${err.message?.slice(0, 120)}`,
-        );
-        break;
       }
+
+      console.warn(`[AI] ${modelName} failed: ${err.message?.slice(0, 150)}`);
     }
   }
 
   throw new Error(
-    "All Gemini models are currently unavailable. Please try again in a moment.",
+    "Gemini is currently unavailable. Please try again in a moment.",
   );
 }
 

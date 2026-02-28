@@ -32,10 +32,17 @@ function classifyError(e) {
       error: "Server is busy. Please try again in a few seconds.",
       retryable: true,
     };
-  if (e?.code === "TIMEOUT")
+  // AbortController abort (timeout) produces name="AbortError" or name="TimeoutError"
+  if (
+    e?.name === "AbortError" ||
+    e?.name === "TimeoutError" ||
+    e?.code === "TIMEOUT" ||
+    msg.includes("aborted") ||
+    msg.includes("timed out")
+  )
     return {
       status: 504,
-      error: "Transcript fetch timed out. YouTube may be slow right now.",
+      error: "Transcript fetch timed out. Please try again.",
       retryable: true,
     };
   if (msg.includes("disabled"))

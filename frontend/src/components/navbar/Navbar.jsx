@@ -1,4 +1,4 @@
-// frontend/src/components/Navbar.jsx
+// frontend/src/components/navbar/Navbar.jsx
 import { NavLink } from "react-router-dom";
 
 const navLinkClass = ({ isActive }) =>

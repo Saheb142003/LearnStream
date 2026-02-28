@@ -1,12 +1,13 @@
 // server/src/services/transcriptService.js
-// Production: Supadata.ai transcript API only.
-// Full multi-layer version (Python + Invidious + Supadata) kept locally
-// in transcriptService.full.js — not committed to GitHub.
+// Fetches transcripts via Supadata.ai (production-only provider).
+// Local Python fallback (youtube_transcript_api) lives in scripts/fetch_transcript.py
+// and is git-ignored — local use only.
 
 import fetch from "node-fetch";
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
 const CACHE_MAX_SIZE = 200;
+const SUPADATA_TIMEOUT_MS = 30_000; // 30 s — gives Supadata reasonable headroom
 
 // ─── LRU cache ─────────────────────────────────────────────────────────────────
 const CACHE = new Map();
@@ -43,20 +44,30 @@ function cleanText(raw) {
 }
 
 // ─── Supadata.ai transcript API ───────────────────────────────────────────────
+// node-fetch only understands AbortController signals, NOT AbortSignal.timeout().
+// Using AbortController + setTimeout for cross-version compatibility.
 async function fetchFromSupadata(videoId) {
   const apiKey = process.env.SUPADATA_API_KEY;
   if (!apiKey) throw new Error("SUPADATA_API_KEY not configured");
 
-  const res = await fetch(
-    `https://api.supadata.ai/v1/youtube/transcript?videoId=${videoId}&lang=en&text=true`,
-    {
-      headers: {
-        "x-api-key": apiKey,
-        "User-Agent": "LearnStream/1.0",
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUPADATA_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(
+      `https://api.supadata.ai/v1/youtube/transcript?videoId=${videoId}&lang=en&text=true`,
+      {
+        headers: {
+          "x-api-key": apiKey,
+          "User-Agent": "LearnStream/1.0",
+        },
+        signal: controller.signal,
       },
-      signal: AbortSignal.timeout(20_000),
-    },
-  );
+    );
+  } finally {
+    clearTimeout(timer); // always clear, whether success or error
+  }
 
   if (res.status === 404)
     throw Object.assign(new Error("No transcript available for this video"), {

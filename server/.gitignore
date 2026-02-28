@@ -5,3 +5,9 @@ scripts/cookies.txt
 # Local-only full versions (with L1 Python + L2 Invidious layers)
 *.full.js
 *.full.py
+
+# Local-only Python transcript fallback (uses youtube_transcript_api).
+# Production uses Supadata only (transcriptService.js).
+scripts/fetch_transcript.py
+scripts/requirements*.txt
+utils/runPython.js

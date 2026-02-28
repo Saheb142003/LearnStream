@@ -1,7 +1,6 @@
 // server/server.js
+import "./src/config/env.js"; // ← MUST be first: loads .env before any other module evaluates
 import MongoStore from "connect-mongo";
-import dotenv from "dotenv";
-dotenv.config();
 
 import express from "express";
 import passport from "passport";
@@ -29,7 +28,7 @@ app.use(
   cors({
     origin: process.env.CLIENT_URL,
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json());
@@ -60,7 +59,7 @@ app.use(
       sameSite: "lax", // ✅ Lax is fine because it's now a First-Party cookie via proxy
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
-  })
+  }),
 );
 
 app.use(passport.initialize());

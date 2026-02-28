@@ -31,7 +31,7 @@ router.get("/dashboard", isAuthenticated, async (req, res) => {
     // Calculate Streak
     let streak = 0;
     const sortedActivity = user.dailyActivity.sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
+      (a, b) => new Date(b.date) - new Date(a.date),
     );
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000)
@@ -169,76 +169,97 @@ router.post("/quiz-result", isAuthenticated, async (req, res) => {
 
 // POST /api/user/track - Track user activity (watch time, app open time)
 router.post("/track", isAuthenticated, async (req, res) => {
-  try {
-    const { videoId, watchTime, appOpenTime, title, thumbnailUrl, playlistId } =
-      req.body;
-    const userId = req.user._id || req.user.id;
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const {
+        videoId,
+        watchTime,
+        appOpenTime,
+        title,
+        thumbnailUrl,
+        playlistId,
+      } = req.body;
+      const userId = req.user._id || req.user.id;
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
 
-    const today = new Date().toISOString().split("T")[0];
-    let todayActivity = user.dailyActivity.find((a) => a.date === today);
+      const today = new Date().toISOString().split("T")[0];
+      let todayActivity = user.dailyActivity.find((a) => a.date === today);
 
-    if (!todayActivity) {
-      todayActivity = {
-        date: today,
-        watchTime: 0,
-        appOpenTime: 0,
-        videosWatched: [],
-        loginCount: 1,
-      };
-      user.dailyActivity.push(todayActivity);
-      todayActivity = user.dailyActivity[user.dailyActivity.length - 1];
-    }
-
-    // Update Watch Time
-    if (watchTime && typeof watchTime === "number") {
-      user.stats.totalWatchTime = (user.stats.totalWatchTime || 0) + watchTime;
-      todayActivity.watchTime = (todayActivity.watchTime || 0) + watchTime;
-    }
-
-    // Update App Open Time
-    if (appOpenTime && typeof appOpenTime === "number") {
-      todayActivity.appOpenTime =
-        (todayActivity.appOpenTime || 0) + appOpenTime;
-    }
-
-    // Track Video & Learning Progress
-    if (videoId) {
-      if (!todayActivity.videosWatched.includes(videoId)) {
-        todayActivity.videosWatched.push(videoId);
+      if (!todayActivity) {
+        todayActivity = {
+          date: today,
+          watchTime: 0,
+          appOpenTime: 0,
+          videosWatched: [],
+          loginCount: 1,
+        };
+        user.dailyActivity.push(todayActivity);
+        todayActivity = user.dailyActivity[user.dailyActivity.length - 1];
       }
 
-      // Update Learning Progress (Continue Watching)
-      if (title) {
-        // Remove existing entry for this video
-        if (!user.learningProgress) user.learningProgress = [];
-        user.learningProgress = user.learningProgress.filter(
-          (p) => p.videoId !== videoId
-        );
+      // Update Watch Time
+      if (watchTime && typeof watchTime === "number") {
+        user.stats.totalWatchTime =
+          (user.stats.totalWatchTime || 0) + watchTime;
+        todayActivity.watchTime = (todayActivity.watchTime || 0) + watchTime;
+      }
 
-        // Add new entry to top
-        user.learningProgress.unshift({
-          videoId,
-          title,
-          thumbnailUrl,
-          playlistId,
-          lastWatched: new Date(),
-        });
+      // Update App Open Time
+      if (appOpenTime && typeof appOpenTime === "number") {
+        todayActivity.appOpenTime =
+          (todayActivity.appOpenTime || 0) + appOpenTime;
+      }
 
-        // Keep only last 20
-        if (user.learningProgress.length > 20) {
-          user.learningProgress = user.learningProgress.slice(0, 20);
+      // Track Video & Learning Progress
+      if (videoId) {
+        if (!todayActivity.videosWatched.includes(videoId)) {
+          todayActivity.videosWatched.push(videoId);
+        }
+
+        // Update Learning Progress (Continue Watching)
+        if (title) {
+          // Remove existing entry for this video
+          if (!user.learningProgress) user.learningProgress = [];
+          user.learningProgress = user.learningProgress.filter(
+            (p) => p.videoId !== videoId,
+          );
+
+          // Add new entry to top
+          user.learningProgress.unshift({
+            videoId,
+            title,
+            thumbnailUrl,
+            playlistId,
+            lastWatched: new Date(),
+          });
+
+          // Keep only last 20
+          if (user.learningProgress.length > 20) {
+            user.learningProgress = user.learningProgress.slice(0, 20);
+          }
         }
       }
-    }
 
-    await user.save();
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Tracking Error:", error);
-    res.status(500).json({ error: "Internal server error" });
+      await user.save();
+      return res.json({ success: true });
+    } catch (error) {
+      if (error.name === "VersionError") {
+        retries -= 1;
+        if (retries === 0) {
+          console.warn("Tracking dropped due to continuous VersionError");
+          return res.json({ success: true, ignored: true });
+        }
+        // Small delay before retrying
+        await new Promise((r) => setTimeout(r, 100));
+        continue;
+      }
+
+      console.error("Tracking Error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
   }
 });
 
