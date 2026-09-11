@@ -33,9 +33,9 @@ const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
 
   if (loading) {
     return (
-      <div className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 min-h-[200px] flex flex-col items-center justify-center">
-        <div className="animate-spin text-4xl mb-4">⏳</div>
-        <p className="font-medium text-gray-600">
+      <div className="p-0 lg:p-5 border-0 lg:border rounded-none lg:rounded-2xl bg-transparent lg:bg-white shadow-none lg:shadow-lg lg:shadow-indigo-50/50 min-h-[80px] lg:min-h-[200px] flex flex-col items-center justify-center py-6 sm:py-12">
+        <div className="animate-spin text-3xl mb-3">⏳</div>
+        <p className="font-medium text-xs sm:text-sm text-gray-600">
           Generating quiz ({difficulty})...
         </p>
       </div>
@@ -44,17 +44,17 @@ const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
 
   if (!quiz || quiz.length === 0) {
     return (
-      <div className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 min-h-[200px] flex flex-col items-center justify-center">
-        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+      <div className="p-0 lg:p-5 border-0 lg:border rounded-none lg:rounded-2xl bg-transparent lg:bg-white shadow-none lg:shadow-lg lg:shadow-indigo-50/50 min-h-[80px] lg:min-h-[200px] flex flex-col items-center justify-center py-6">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
           <span className="text-emerald-500">🧠</span> Generate Quiz
         </h3>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           {["easy", "medium", "hard"].map((level) => (
             <button
               key={level}
               onClick={() => setDifficulty(level)}
-              className={`px-4 py-2 rounded-lg capitalize transition-all ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm capitalize transition-all ${
                 difficulty === level
                   ? "bg-emerald-500 text-white shadow-md scale-105"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -67,9 +67,9 @@ const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
 
         <button
           onClick={() => onRetry(difficulty)}
-          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-2"
+          className="px-4 py-2 sm:px-6 sm:py-3 bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-2"
         >
-          <span className="text-lg">⚡</span> Generate Quiz
+          <span className="text-base sm:text-lg">⚡</span> Generate Quiz
         </button>
       </div>
     );
@@ -80,9 +80,9 @@ const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
   }, 0);
 
   return (
-    <div className="p-5 border rounded-2xl bg-white shadow-lg shadow-indigo-50/50 min-h-[200px]">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+    <div className="p-0 lg:p-5 border-0 lg:border rounded-none lg:rounded-2xl bg-transparent lg:bg-white shadow-none lg:shadow-lg lg:shadow-indigo-50/50 min-h-[80px] lg:min-h-[200px]">
+      <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
           <span className="text-emerald-500">🧠</span> Quiz
         </h3>
         <button
@@ -94,21 +94,21 @@ const QuizBox = ({ quiz, loading, onRetry, onQuizComplete }) => {
         </button>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {quiz.map((q, i) => (
           <div
             key={i}
-            className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+            className="p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-100"
           >
-            <p className="font-medium text-gray-800 mb-3">
+            <p className="font-medium text-xs sm:text-sm text-gray-800 mb-2 sm:mb-3">
               {i + 1}. {q.question}
             </p>
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:space-y-2">
               {q.options.map((opt, optIndex) => {
                 const isSelected = answers[i] === optIndex;
                 const isCorrect = q.correctAnswer === optIndex;
                 let btnClass =
-                  "w-full text-left p-3 rounded-lg text-sm transition-all border ";
+                  "w-full text-left p-2 sm:p-3 rounded-lg text-xs sm:text-sm transition-all border ";
 
                 if (showResults) {
                   if (isCorrect)

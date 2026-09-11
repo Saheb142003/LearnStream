@@ -20,6 +20,8 @@ const VideoFrame = ({
       }
 
       playerRef.current = new window.YT.Player(containerRef.current, {
+        height: "100%",
+        width: "100%",
         videoId,
         playerVars: {
           rel: 0,

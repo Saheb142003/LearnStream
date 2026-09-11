@@ -158,6 +158,17 @@ router.post("/quiz-result", isAuthenticated, async (req, res) => {
       });
     }
 
+    // Update solved questions to prevent repeat
+    const { questionTexts } = req.body;
+    if (questionTexts && Array.isArray(questionTexts)) {
+      if (!user.solvedQuestions) user.solvedQuestions = [];
+      questionTexts.forEach((q) => {
+        if (!user.solvedQuestions.includes(q)) {
+          user.solvedQuestions.push(q);
+        }
+      });
+    }
+
     await user.save();
 
     res.json({ success: true, quizHistory: user.quizHistory });

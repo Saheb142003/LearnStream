@@ -2,11 +2,10 @@
 import express from "express";
 import Playlist from "../models/playlist.js";
 import { fetchPlaylistData, fetchVideoData } from "../utils/youtubeService.js";
+import { validateEducationalContent } from "../utils/contentFilter.js";
 import { ensureAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-
-router.use(ensureAuth);
 
 /* ----------------------------- helpers ------------------------------ */
 function extractVideoId(url = "") {
@@ -49,7 +48,7 @@ function extractPlaylistId(url = "") {
  * Accepts: { url? , playlistId?, videoId? }
  * Creates (or returns existing) entry for either a playlist or a single video.
  */
-router.post("/", async (req, res) => {
+router.post("/", ensureAuth, async (req, res) => {
   try {
     const userId = req.user._id;
     let { url, playlistId, videoId } = req.body || {};
@@ -81,6 +80,36 @@ router.post("/", async (req, res) => {
       if (existing) return res.status(200).json(existing);
 
       const data = await fetchPlaylistData(playlistId);
+
+      // Validate playlist suitability for educational learning
+      const playlistValidation = validateEducationalContent({
+        title: data.title,
+        description: data.description,
+      });
+
+      if (!playlistValidation.isAllowed) {
+        return res.status(422).json({
+          error: "UNWANTED_CONTENT",
+          message: playlistValidation.reason,
+          flag: playlistValidation.flag,
+        });
+      }
+
+      // Also validate the first video in the playlist if available
+      if (data.videos && data.videos.length > 0) {
+        const firstVidValidation = validateEducationalContent({
+          title: data.videos[0].title,
+          description: data.videos[0].description,
+        });
+        if (!firstVidValidation.isAllowed) {
+          return res.status(422).json({
+            error: "UNWANTED_CONTENT",
+            message: firstVidValidation.reason,
+            flag: firstVidValidation.flag,
+          });
+        }
+      }
+
       payload = {
         user: userId,
         playlistId: data.playlistId,
@@ -99,6 +128,24 @@ router.post("/", async (req, res) => {
       if (existing) return res.status(200).json(existing);
 
       const videoInfo = await fetchVideoData(videoId);
+
+      // Validate single video content
+      const videoValidation = validateEducationalContent({
+        title: videoInfo.title,
+        description: videoInfo.description,
+        tags: videoInfo.tags,
+        categoryId: videoInfo.categoryId,
+        durationSeconds: videoInfo.durationSeconds,
+      });
+
+      if (!videoValidation.isAllowed) {
+        return res.status(422).json({
+          error: "UNWANTED_CONTENT",
+          message: videoValidation.reason,
+          flag: videoValidation.flag,
+        });
+      }
+
       payload = {
         user: userId,
         playlistId: videoId, // keep the same shape in your schema
@@ -121,7 +168,7 @@ router.post("/", async (req, res) => {
 /**
  * GET /api/playlists
  */
-router.get("/", async (req, res) => {
+router.get("/", ensureAuth, async (req, res) => {
   try {
     const userId = req.user._id;
     const playlists = await Playlist.find({ user: userId }).sort({
@@ -154,7 +201,7 @@ router.get("/:id", async (req, res) => {
 /**
  * DELETE /api/playlists/:id
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", ensureAuth, async (req, res) => {
   try {
     const userId = req.user._id;
     const playlist = await Playlist.findOneAndDelete({

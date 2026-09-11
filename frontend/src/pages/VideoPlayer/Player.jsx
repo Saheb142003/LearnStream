@@ -18,6 +18,7 @@ import Predisplay from "./components/Predisplay";
 import PlaylistPanel from "./components/PlaylistPanel";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import { useAuth } from "../../hooks/useAuth";
+import SEO from "../../components/SEO";
 
 // ─── sessionStorage helpers ────────────────────────────────────────────────────
 const STORE_KEYS = (videoId) => ({
@@ -62,6 +63,44 @@ function isMongoObjectId(str) {
 function isYouTubeId(str) {
   return /^[A-Za-z0-9_-]{11}$/.test(str);
 }
+
+const formatDescription = (text) => {
+  if (!text) return "";
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const hashtagRegex = /(#[a-zA-Z0-9_]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-600 hover:text-indigo-800 hover:underline break-all font-medium"
+        >
+          {part}
+        </a>
+      );
+    }
+
+    const subParts = part.split(hashtagRegex);
+    return subParts.map((subPart, subIndex) => {
+      if (subPart.match(hashtagRegex)) {
+        return (
+          <span
+            key={`${index}-${subIndex}`}
+            className="text-indigo-500 font-medium hover:text-indigo-600 cursor-pointer"
+          >
+            {subPart}
+          </span>
+        );
+      }
+      return subPart;
+    });
+  });
+};
 
 const Player = () => {
   const { id } = useParams();
@@ -139,6 +178,12 @@ const Player = () => {
   // quiz state
   const [quiz, setQuiz] = useState([]);
   const [quizLoading, setQuizLoading] = useState(false);
+  const [quizDifficulty, setQuizDifficulty] = useState("Medium");
+
+  // New Description & Suggestions States
+  const [showDescription, setShowDescription] = useState(false);
+  const [description, setDescription] = useState("");
+  const [suggestedVideos, setSuggestedVideos] = useState([]);
 
   // keep an AbortController so we can cancel previous requests
   const controllerRef = useRef(null);
@@ -345,6 +390,59 @@ const Player = () => {
     // Watch time accumulator is managed via a ref and batched for the backend
   }, [activeVideoId, loading, entry]);
 
+  // Fetch details (description) on activeVideoId change if missing
+  useEffect(() => {
+    if (!activeVideoId) return;
+
+    const savedEntry = storageGet(STORE_KEYS(activeVideoId).entry);
+    if (savedEntry && savedEntry.description) {
+      setDescription(savedEntry.description);
+      return;
+    }
+
+    fetch(`${BASE_URL}/api/videos/${activeVideoId}/details`)
+      .then((res) => res.json())
+      .then((data) => {
+        setDescription(data.description || "");
+        if (savedEntry) {
+          savedEntry.description = data.description;
+          storageSet(STORE_KEYS(activeVideoId).entry, savedEntry);
+        }
+      })
+      .catch((err) =>
+        console.error("Failed to load description details:", err),
+      );
+  }, [activeVideoId]);
+
+  // Fetch dynamic suggestions from global feed when not in a playlist
+  useEffect(() => {
+    if (playlistVideos.length === 0) {
+      fetch(`${BASE_URL}/api/feed?type=video`)
+        .then((res) => res.json())
+        .then((data) => {
+          const list = data && Array.isArray(data.videos) ? data.videos : [];
+          let items = [];
+          list.forEach((v) => {
+            if (
+              v.videoId !== activeVideoId &&
+              !items.some((x) => x.videoId === v.videoId)
+            ) {
+              items.push({
+                videoId: v.videoId,
+                title: v.title,
+                thumbnailUrl:
+                  v.thumbnailUrl ||
+                  `https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`,
+                playlistId: v.playlistId,
+              });
+            }
+          });
+          setSuggestedVideos(items.slice(0, 6));
+        })
+        .catch((err) => console.error("Failed to fetch suggested feed:", err));
+    }
+  }, [playlistVideos, activeVideoId]);
+
   // Handle accumulated watch time
   const watchTimeRef = useRef(0);
   const handleWatchTimeUpdate = useCallback((seconds) => {
@@ -389,12 +487,6 @@ const Player = () => {
     async (opts = {}) => {
       if (!activeVideoId) {
         setErr("No active video to transcribe.");
-        return;
-      }
-
-      // Enforce Auth for Transcription
-      if (!isAuthenticated) {
-        startGoogleSignIn();
         return;
       }
 
@@ -457,16 +549,14 @@ const Player = () => {
   );
 
   const handleSummarize = async () => {
-    if (!isAuthenticated) {
-      startGoogleSignIn();
-      return;
-    }
-
+    setViewMode("summary");
     if (!transcript) {
+      if (transcriptLoading) {
+        return; // Let background autoFetch complete it
+      }
       setErr("Please generate transcript first.");
       return;
     }
-    setViewMode("summary");
 
     // ── Return instantly if summary already saved ──────────────────────────
     const keys = STORE_KEYS(activeVideoId);
@@ -481,7 +571,7 @@ const Player = () => {
       const res = await fetch(`${BASE_URL}/api/ai/summarize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript }),
+        body: JSON.stringify({ videoId: activeVideoId, transcript }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -500,6 +590,7 @@ const Player = () => {
       return;
     }
     setViewMode("quiz");
+    setQuizDifficulty(difficulty.charAt(0).toUpperCase() + difficulty.slice(1));
 
     // ── Return instantly if quiz for this video is already saved ──────────
     const keys = STORE_KEYS(activeVideoId);
@@ -517,7 +608,7 @@ const Player = () => {
       const res = await fetch(`${BASE_URL}/api/ai/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary, difficulty }),
+        body: JSON.stringify({ videoId: activeVideoId, summary, difficulty }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -588,7 +679,18 @@ const Player = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] bg-gray-50 overflow-hidden relative">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] bg-gray-50 overflow-y-auto lg:overflow-hidden relative">
+      <SEO
+        title={
+          entry?.title
+            ? `${viewMode === "quiz" ? `${quizDifficulty} Quiz: ` : ""}${entry.title}`
+            : "Video Player"
+        }
+        description={summary ? summary.substring(0, 150) + "..." : undefined}
+        url={`/player/${id}${activeVideoId ? `?v=${activeVideoId}` : ""}`}
+        quizQuestions={viewMode === "quiz" ? quiz : undefined}
+      />
+
       {/* Playlist Sidebar Overlay */}
       <AnimatePresence>
         {playlistVideos.length > 0 && isPlaylistOpen && (
@@ -643,8 +745,8 @@ const Player = () => {
       )}
 
       {/* Left: video area */}
-      <div className="w-full lg:flex-1 flex flex-col shrink-0 lg:shrink bg-black lg:bg-transparent justify-center lg:justify-start p-0 lg:p-6 overflow-visible">
-        <div className="w-full aspect-video bg-black lg:rounded-2xl shadow-lg overflow-hidden flex items-center justify-center relative z-10">
+      <div className="w-full lg:flex-1 flex flex-col bg-gray-50 lg:bg-transparent lg:overflow-y-auto overflow-x-hidden h-auto lg:h-full no-scrollbar">
+        <div className="w-full aspect-video bg-black lg:rounded-2xl shadow-lg overflow-hidden flex items-center justify-center relative z-10 shrink-0">
           {loading ? (
             <SkeletonLoader className="w-full h-full bg-gray-800" />
           ) : activeVideoId ? (
@@ -659,52 +761,356 @@ const Player = () => {
             <p className="text-gray-400">🎬 No video selected</p>
           )}
         </div>
-        {entry && (
-          <div className="p-4 lg:p-0 lg:mt-4 bg-white lg:bg-transparent border-b lg:border-none border-gray-100 flex justify-between items-start gap-4">
-            <h2 className="text-lg lg:text-2xl font-bold text-gray-800 leading-tight line-clamp-2 flex-1">
-              {entry.title}
-            </h2>
 
-            {/* Navigation Controls - Modern UI */}
-            {playlistVideos.length > 0 && (
-              <div className="flex gap-3 shrink-0">
-                <button
-                  onClick={handlePrev}
-                  disabled={
-                    playlistVideos.findIndex(
-                      (v) => v.videoId === activeVideoId,
-                    ) <= 0
-                  }
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-medium shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  title="Previous Video"
+        {/* details panel below video */}
+        <div className="w-full mt-2 lg:mt-0 px-3 lg:px-0 pb-16 lg:pb-6 flex flex-col gap-2 sm:gap-3 lg:gap-4 flex-1 h-auto">
+          {entry && (
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100/90 shadow-xs flex flex-col gap-3">
+              <div className="flex justify-between items-start gap-4">
+                <div
+                  onClick={() => setShowDescription(!showDescription)}
+                  className="flex items-center gap-2.5 cursor-pointer group flex-1"
                 >
-                  <ChevronLeft size={20} />
-                  <span className="hidden sm:inline text-sm">Prev</span>
-                </button>
-                <button
-                  onClick={handleNext}
-                  disabled={
-                    playlistVideos.findIndex(
-                      (v) => v.videoId === activeVideoId,
-                    ) >=
-                    playlistVideos.length - 1
-                  }
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium shadow-md shadow-indigo-200 hover:bg-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:shadow-none disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
-                  title="Next Video"
-                >
-                  <span className="hidden sm:inline text-sm">Next</span>
-                  <ChevronRight size={20} />
-                </button>
+                  <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 leading-snug line-clamp-2 font-sans group-hover:text-indigo-600 transition-colors">
+                    {entry.title}
+                  </h1>
+                  <span className="text-gray-400 group-hover:text-indigo-600 transition-colors text-base lg:text-lg shrink-0 p-1 rounded-lg bg-gray-50 group-hover:bg-indigo-50">
+                    {showDescription ? "▴" : "▾"}
+                  </span>
+                </div>
+
+                {/* Navigation Controls */}
+                {playlistVideos.length > 0 && (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={handlePrev}
+                      disabled={
+                        playlistVideos.findIndex(
+                          (v) => v.videoId === activeVideoId,
+                        ) <= 0
+                      }
+                      className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 shadow-xs hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      title="Previous Video"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      disabled={
+                        playlistVideos.findIndex(
+                          (v) => v.videoId === activeVideoId,
+                        ) >=
+                        playlistVideos.length - 1
+                      }
+                      className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 disabled:opacity-40 disabled:shadow-none disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-all"
+                      title="Next Video"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                )}
               </div>
+
+              <AnimatePresence>
+                {showDescription && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="border-t border-gray-100 pt-3 overflow-hidden"
+                  >
+                    <div className="p-4 bg-slate-50/90 rounded-xl text-xs sm:text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border border-slate-200/70 font-sans shadow-2xs">
+                      {description
+                        ? formatDescription(description)
+                        : "No description available for this video."}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Mobile Tab Controls and Active Content Box */}
+          <div className="block lg:hidden mt-2 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
+            {embedUrl && (
+              <VideoControls
+                viewMode={viewMode}
+                setViewMode={(tab) => {
+                  if (viewMode === tab) {
+                    setViewMode(null);
+                  } else {
+                    setViewMode(tab);
+                  }
+                }}
+                onTranscribe={() => fetchTranscriptForActive()}
+                onSummarize={handleSummarize}
+                onQuizify={handleQuizify}
+                transcriptLoading={transcriptLoading}
+                summaryLoading={summaryLoading}
+                quizLoading={quizLoading}
+                activeVideoId={activeVideoId}
+                hasTranscript={!!transcript}
+              />
             )}
+            <div className="mt-2 sm:mt-4">
+              <AnimatePresence mode="wait">
+                {viewMode === "transcript" &&
+                  (!transcript && !transcriptLoading ? (
+                    <Predisplay />
+                  ) : (
+                    <motion.div
+                      key="transcript-mob"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="relative"
+                    >
+                      {!isAuthenticated && (
+                        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-50 rounded-xl">
+                          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2 shadow-sm">
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              ></path>
+                            </svg>
+                          </div>
+                          <h3 className="font-semibold text-gray-800 text-xs">
+                            Unlock Full Transcript
+                          </h3>
+                          <button
+                            onClick={startGoogleSignIn}
+                            className="mt-2 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-md transition-all"
+                          >
+                            Sign In
+                          </button>
+                        </div>
+                      )}
+                      <div
+                        className={
+                          !isAuthenticated
+                            ? "max-h-[200px] overflow-hidden select-none pointer-events-none"
+                            : "max-h-[380px] overflow-y-auto no-scrollbar"
+                        }
+                      >
+                        <TranscriptBox
+                          loading={transcriptLoading}
+                          transcript={transcript}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+
+                {viewMode === "summary" && (
+                  <motion.div
+                    key="summary-mob"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="relative"
+                  >
+                    {!isAuthenticated && (
+                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-50 rounded-xl">
+                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2 shadow-sm">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            ></path>
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-gray-800 text-xs">
+                          Unlock AI Summary
+                        </h3>
+                        <button
+                          onClick={startGoogleSignIn}
+                          className="mt-2 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-md transition-all"
+                        >
+                          Sign In
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      className={
+                        !isAuthenticated
+                          ? "max-h-[200px] overflow-hidden select-none pointer-events-none"
+                          : "max-h-[380px] overflow-y-auto custom-scrollbar"
+                      }
+                    >
+                      <SummaryBox summary={summary} loading={summaryLoading} />
+                    </div>
+                  </motion.div>
+                )}
+
+                {viewMode === "quiz" && (
+                  <motion.div
+                    key="quiz-mob"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="relative"
+                  >
+                    {!isAuthenticated && (
+                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-50 rounded-xl">
+                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-2 shadow-sm">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            ></path>
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-gray-800 text-xs">
+                          Unlock Practice Quiz
+                        </h3>
+                        <button
+                          onClick={startGoogleSignIn}
+                          className="mt-2 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-md transition-all"
+                        >
+                          Sign In
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      className={
+                        !isAuthenticated
+                          ? "max-h-[200px] overflow-hidden select-none pointer-events-none"
+                          : "max-h-[380px] overflow-y-auto custom-scrollbar"
+                      }
+                    >
+                      <QuizBox
+                        quiz={quiz}
+                        loading={quizLoading}
+                        onRetry={(diff) => handleQuizify(diff, true)}
+                        onQuizComplete={handleQuizComplete}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        )}
+
+          {/* Suggested Study Material (Renders in Left Scroll Column for both Desktop and Mobile view) */}
+          <div className="mt-4 pt-2 border-t border-gray-100">
+            <h3 className="hidden lg:flex font-bold text-gray-800 text-sm lg:text-base mb-3 items-center gap-2 px-1">
+              <svg
+                className="w-5 h-5 text-indigo-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Suggested Study Material
+            </h3>
+
+            {/* Desktop layout: Grid */}
+            <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {suggestedVideos.length > 0 ? (
+                suggestedVideos.map((v) => (
+                  <div
+                    key={v.videoId}
+                    onClick={() => {
+                      navigate(
+                        `/player/${v.playlistId || v.videoId}?v=${v.videoId}`,
+                      );
+                    }}
+                    className="group bg-white border border-gray-100 rounded-xl overflow-hidden cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all flex flex-col"
+                  >
+                    <div className="aspect-video bg-gray-100 relative overflow-hidden">
+                      <img
+                        src={v.thumbnailUrl}
+                        alt={v.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                    </div>
+                    <div className="p-3 flex-1 flex flex-col justify-between">
+                      <h4 className="font-semibold text-xs text-gray-800 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">
+                        {v.title}
+                      </h4>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-8 text-center text-xs text-gray-400">
+                  No suggested videos found.
+                </div>
+              )}
+            </div>
+
+            {/* Mobile layout: Vertical List (YouTube-like) */}
+            <div className="flex lg:hidden flex-col gap-3 pb-4">
+              {suggestedVideos.length > 0 ? (
+                suggestedVideos.map((v) => (
+                  <div
+                    key={v.videoId}
+                    onClick={() => {
+                      navigate(
+                        `/player/${v.playlistId || v.videoId}?v=${v.videoId}`,
+                      );
+                    }}
+                    className="flex flex-row gap-3 cursor-pointer items-start hover:bg-gray-100/50 p-1.5 rounded-xl transition-colors"
+                  >
+                    <div className="w-32 aspect-video bg-gray-100 rounded-lg overflow-hidden shrink-0 relative">
+                      <img
+                        src={v.thumbnailUrl}
+                        alt={v.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col justify-start min-w-0 py-0.5">
+                      <h4 className="font-semibold text-xs text-gray-900 line-clamp-2 leading-snug mb-1">
+                        {v.title}
+                      </h4>
+                      <span className="text-[10px] text-gray-500 font-medium">
+                        Study Material
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-6 text-center text-xs text-gray-400">
+                  No suggested videos found.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Right: tools */}
-      <div className="flex-1 w-full lg:flex-none lg:w-[400px] xl:w-[450px] bg-white shadow-xl border-l border-gray-100 flex flex-col z-20 overflow-hidden">
+      {/* Right: tools (Visible on Desktop only) */}
+      <div className="hidden lg:flex lg:flex-col lg:w-[400px] xl:w-[450px] bg-white border-l border-gray-100 z-20 overflow-hidden h-full shrink-0">
         {/* Header / Controls */}
-        <div className="p-3 lg:p-6 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="p-2.5 lg:py-2 lg:px-3 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
           {err && (
             <div className="mb-3 p-3 text-sm rounded-lg bg-red-50 text-red-700 border border-red-200">
               {err}
@@ -736,7 +1142,7 @@ const Player = () => {
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar bg-gray-50/50">
+        <div className="flex-1 overflow-x-hidden lg:overflow-y-auto p-2 lg:p-3 lg:custom-scrollbar bg-gray-50/50 relative">
           {embedUrl && !loading && (
             <AnimatePresence mode="wait">
               {viewMode === "transcript" &&
@@ -748,13 +1154,52 @@ const Player = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="h-full"
+                    className="lg:h-full relative"
                   >
-                    <TranscriptBox
-                      loading={transcriptLoading}
-                      transcript={transcript}
-                    />
+                    {!isAuthenticated && (
+                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-50 rounded-2xl">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            ></path>
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-gray-800">
+                          Unlock Full Transcript
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1 max-w-[280px]">
+                          Sign in to view interactive transcripts, generate note
+                          cards, and track your history.
+                        </p>
+                        <button
+                          onClick={startGoogleSignIn}
+                          className="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all transform hover:-translate-y-0.5"
+                        >
+                          Sign In with Google
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      className={
+                        !isAuthenticated
+                          ? "max-h-[220px] overflow-hidden select-none pointer-events-none"
+                          : ""
+                      }
+                    >
+                      <TranscriptBox
+                        loading={transcriptLoading}
+                        transcript={transcript}
+                      />
+                    </div>
                   </motion.div>
                 ))}
 
@@ -764,9 +1209,49 @@ const Player = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
+                  className="relative lg:h-full"
                 >
-                  <SummaryBox summary={summary} loading={summaryLoading} />
+                  {!isAuthenticated && (
+                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-50 rounded-2xl">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          ></path>
+                        </svg>
+                      </div>
+                      <h3 className="font-semibold text-gray-800">
+                        Unlock AI Summary
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1 max-w-[280px]">
+                        Get key takeaways, structured outlines, and study notes
+                        instantly.
+                      </p>
+                      <button
+                        onClick={startGoogleSignIn}
+                        className="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all transform hover:-translate-y-0.5"
+                      >
+                        Sign In with Google
+                      </button>
+                    </div>
+                  )}
+                  <div
+                    className={
+                      !isAuthenticated
+                        ? "max-h-[220px] overflow-hidden select-none pointer-events-none"
+                        : ""
+                    }
+                  >
+                    <SummaryBox summary={summary} loading={summaryLoading} />
+                  </div>
                 </motion.div>
               )}
 
@@ -776,37 +1261,58 @@ const Player = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
+                  className="relative lg:h-full"
                 >
-                  <QuizBox
-                    quiz={quiz}
-                    loading={quizLoading}
-                    onRetry={(diff) => handleQuizify(diff, true)}
-                    onQuizComplete={handleQuizComplete}
-                  />
+                  {!isAuthenticated && (
+                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-50 rounded-2xl">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          ></path>
+                        </svg>
+                      </div>
+                      <h3 className="font-semibold text-gray-800">
+                        Unlock Practice Quiz
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1 max-w-[280px]">
+                        Test your retention and score points using active recall
+                        practice questions.
+                      </p>
+                      <button
+                        onClick={startGoogleSignIn}
+                        className="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all transform hover:-translate-y-0.5"
+                      >
+                        Sign In with Google
+                      </button>
+                    </div>
+                  )}
+                  <div
+                    className={
+                      !isAuthenticated
+                        ? "max-h-[220px] overflow-hidden select-none pointer-events-none"
+                        : ""
+                    }
+                  >
+                    <QuizBox
+                      quiz={quiz}
+                      loading={quizLoading}
+                      onRetry={(diff) => handleQuizify(diff, true)}
+                      onQuizComplete={handleQuizComplete}
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           )}
-        </div>
-
-        {/* Footer / Back Button */}
-        <div className="p-3 lg:p-4 border-t border-gray-100 bg-white">
-          <button
-            onClick={() => {
-              try {
-                sessionStorage.removeItem("ls_now_playing");
-              } catch {
-                /**/
-              }
-              navigate(-1);
-            }}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl shadow-sm border border-gray-200 hover:bg-gray-100 hover:text-indigo-600 transition-all duration-200"
-          >
-            <span>⬅</span>{" "}
-            <span className="hidden sm:inline">Back to Dashboard</span>
-            <span className="sm:hidden">Back</span>
-          </button>
         </div>
       </div>
     </div>

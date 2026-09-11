@@ -1,5 +1,7 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import VideoCache from "../models/videoCache.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
@@ -73,7 +75,16 @@ router.post("/summarize", async (req, res) => {
         .status(500)
         .json({ error: "Server configuration error: Missing API Key" });
 
-    const { transcript } = req.body;
+    const { videoId, transcript } = req.body;
+
+    // Check cache first
+    if (videoId) {
+      const cached = await VideoCache.findOne({ videoId });
+      if (cached && cached.summary) {
+        return res.json({ summary: cached.summary });
+      }
+    }
+
     if (!transcript)
       return res.status(400).json({ error: "Transcript is required" });
 
@@ -98,6 +109,16 @@ Transcript:
 ${truncatedText}`;
 
     const summary = await generateWithFallback(apiKey, prompt);
+
+    // Save in Cache
+    if (videoId) {
+      await VideoCache.findOneAndUpdate(
+        { videoId },
+        { $set: { summary } },
+        { upsert: true, new: true }
+      );
+    }
+
     res.json({ summary });
   } catch (error) {
     console.error("Gemini Summary Error:", error.message);
@@ -118,7 +139,29 @@ router.post("/quiz", async (req, res) => {
         .status(500)
         .json({ error: "Server configuration error: Missing API Key" });
 
-    const { transcript, summary, difficulty = "medium" } = req.body;
+    const { videoId, transcript, summary, difficulty = "medium" } = req.body;
+
+    let user = null;
+    if (req.user) {
+      user = await User.findById(req.user._id || req.user.id);
+    }
+
+    if (videoId) {
+      const cached = await VideoCache.findOne({ videoId });
+      if (cached && cached.quizPool && cached.quizPool.length > 0) {
+        if (user) {
+          const solvedSet = new Set(user.solvedQuestions || []);
+          const unsolved = cached.quizPool.filter((q) => !solvedSet.has(q.question));
+
+          if (unsolved.length >= 5) {
+            return res.json({ quiz: unsolved.slice(0, 5) });
+          }
+        } else {
+          // For guest users, return the first 5 questions in the cache pool
+          return res.json({ quiz: cached.quizPool.slice(0, 5) });
+        }
+      }
+    }
 
     let sourceText = "";
     let sourceLabel = "";
@@ -131,10 +174,18 @@ router.post("/quiz", async (req, res) => {
       sourceLabel = "Transcript";
     }
 
+    if (!sourceText && videoId) {
+      const cached = await VideoCache.findOne({ videoId });
+      if (cached) {
+        sourceText = cached.summary || cleanTranscript(cached.transcript);
+        sourceLabel = cached.summary ? "Summary" : "Transcript";
+      }
+    }
+
     if (!sourceText)
       return res
         .status(400)
-        .json({ error: "Summary or Transcript is required" });
+        .json({ error: "Summary or Transcript is required to generate quiz" });
 
     const truncatedText = sourceText.substring(0, 30000);
 
@@ -155,9 +206,12 @@ ${truncatedText}`;
       responseMimeType: "application/json",
     });
 
-    let quiz;
+    let generatedQuestions;
     try {
-      quiz = JSON.parse(text);
+      generatedQuestions = JSON.parse(text);
+      if (!Array.isArray(generatedQuestions)) {
+        generatedQuestions = [generatedQuestions];
+      }
     } catch (e) {
       console.error("Failed to parse Gemini JSON:", text.slice(0, 200));
       return res
@@ -165,7 +219,16 @@ ${truncatedText}`;
         .json({ error: "AI returned invalid JSON format." });
     }
 
-    res.json({ quiz });
+    // Save in Cache
+    if (videoId) {
+      await VideoCache.findOneAndUpdate(
+        { videoId },
+        { $push: { quizPool: { $each: generatedQuestions } } },
+        { upsert: true, new: true }
+      );
+    }
+
+    res.json({ quiz: generatedQuestions });
   } catch (error) {
     console.error("Gemini Quiz Error:", error.message);
     const is503 =

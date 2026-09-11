@@ -77,7 +77,7 @@ async function fetchVideoDurations(videoIds) {
 }
 
 export async function fetchPlaylistData(playlistId) {
-  // fetch playlist title
+  // fetch playlist title & description
   const playlistRes = await fetch(
     `${API_BASE}/playlists?part=snippet&id=${playlistId}&key=${YOUTUBE_API_KEY}`
   );
@@ -87,7 +87,9 @@ export async function fetchPlaylistData(playlistId) {
     throw new Error("Playlist not found");
   }
 
-  const playlistTitle = playlistData.items[0].snippet.title;
+  const playlistSnippet = playlistData.items[0].snippet;
+  const playlistTitle = playlistSnippet.title;
+  const playlistDescription = playlistSnippet.description || "";
 
   let allVideos = [];
   let nextPageToken = "";
@@ -109,6 +111,7 @@ export async function fetchPlaylistData(playlistId) {
       .map((item) => ({
         videoId: item.snippet?.resourceId?.videoId,
         title: item.snippet?.title,
+        description: item.snippet?.description || "",
       }))
       // 🚫 Remove private/deleted
       .filter(
@@ -138,6 +141,7 @@ export async function fetchPlaylistData(playlistId) {
   return {
     playlistId,
     title: playlistTitle,
+    description: playlistDescription,
     totalRuntime: secondsToHumanFormat(totalSeconds), // ✅ Playlist total time
     videos: videosWithDurations,
     isSingleVideo: false,
@@ -160,7 +164,11 @@ export async function fetchVideoData(videoId) {
   return {
     videoId,
     title: video.snippet.title,
+    description: video.snippet.description || "",
+    tags: video.snippet.tags || [],
+    categoryId: video.snippet.categoryId || "",
     duration,
+    durationSeconds: durationToSeconds(duration),
     isSingleVideo: true,
   };
 }

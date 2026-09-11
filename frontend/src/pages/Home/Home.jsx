@@ -17,6 +17,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import SEO from "../../components/SEO";
 
 const BackgroundSticker = ({
   icon: Icon,
@@ -362,15 +363,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 selection:bg-indigo-100 overflow-x-hidden font-sans">
-      {/* Background Gradients (Light) */}
-      <Helmet>
-        <title>LearnStream - Transform Video Into Knowledge</title>
-        <meta
-          name="description"
-          content="Turn any YouTube video into an interactive learning experience with transcripts, summaries, and quizzes."
-        />
-        <link rel="canonical" href="https://learnstream.netlify.app/" />
-      </Helmet>
+      {/* SEO & Rich Metadata */}
+      <SEO
+        title="Transform Video Into Knowledge"
+        description="Stop watching passively. Turn any YouTube video or playlist into an interactive learning experience with AI-powered transcripts, summaries, note cards, and practice quizzes."
+        url="/"
+      />
 
       {/* Hero Section */}
       <section className="relative pt-4 pb-12 lg:pt-12 lg:pb-20 px-6">
@@ -478,15 +476,36 @@ export default function Home() {
           </motion.div>
 
           {/* Error/Info Messages */}
-          <div className="mt-6 h-6">
+          <div className="mt-6 max-w-2xl mx-auto">
             {err && (
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-500 font-medium"
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-left flex items-start gap-3.5 shadow-sm"
               >
-                {err}
-              </motion.p>
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white shrink-0 flex items-center justify-center shadow-xs mt-0.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-xs sm:text-sm text-amber-900 mb-0.5">
+                    Content Not Permitted
+                  </h4>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    {err}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErr("")}
+                  className="text-amber-500 hover:text-amber-700 p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </motion.div>
             )}
           </div>
         </div>

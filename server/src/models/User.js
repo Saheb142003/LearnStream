@@ -73,6 +73,7 @@ const userSchema = new mongoose.Schema(
         playlistId: String,
       },
     ],
+    solvedQuestions: [{ type: String }],
   },
   { timestamps: true }
 );

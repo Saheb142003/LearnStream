@@ -5,6 +5,7 @@ import PlaylistCard from "./PlaylistCard";
 import LoadingSpinner from "./LoadingSpinner";
 import ErrorMessage from "./ErrorMessage";
 import FilterBar from "./FilterBar";
+import SEO from "../../components/SEO";
 
 const BASE_URL = "";
 
@@ -148,6 +149,16 @@ export default function Feed() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <SEO
+        title={debouncedSearch ? `Search "${debouncedSearch}"` : "Discover Video Courses & Playlists"}
+        description="Explore educational video playlists, coding tutorials, and interactive study material on LearnStream."
+        url="/feed"
+        breadcrumbs={[
+          { name: "Home", path: "/" },
+          { name: "Feed", path: "/feed" },
+        ]}
+      />
+
       {/* Header Section (Search bar + Filter Chips) */}
       <div className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200 sticky top-0 z-10 transition-all">
         <div className="max-w-7xl mx-auto px-4 py-3">

@@ -14,10 +14,6 @@ const VideoControls = ({
   hasTranscript,
   onQuizify, // eslint-disable-line no-unused-vars
 }) => {
-  const transcribeDisabled = transcriptLoading || !activeVideoId;
-  const summaryDisabled = summaryLoading || !hasTranscript;
-  // const quizDisabled = quizLoading || !hasTranscript; // Unused variable removed
-
   const buttons = [
     {
       id: "transcript",
@@ -25,19 +21,20 @@ const VideoControls = ({
       icon: transcriptLoading ? "⏳" : "📖",
       onClick: () => {
         setViewMode("transcript");
-        if (onTranscribe && !transcribeDisabled && !hasTranscript)
+        if (onTranscribe && !hasTranscript && !transcriptLoading)
           onTranscribe();
       },
-      disabled: transcribeDisabled,
+      disabled: !activeVideoId,
     },
     {
       id: "summary",
       label: summaryLoading ? "Summarizing..." : "Summarize",
       icon: summaryLoading ? "⏳" : "✨",
       onClick: () => {
-        if (onSummarize && !summaryDisabled) onSummarize();
+        setViewMode("summary");
+        if (onSummarize && !summaryLoading) onSummarize();
       },
-      disabled: summaryDisabled,
+      disabled: !activeVideoId,
     },
     {
       id: "quiz",
@@ -45,14 +42,20 @@ const VideoControls = ({
       icon: quizLoading ? "⏳" : "🧠",
       onClick: () => {
         setViewMode("quiz");
-        // We let the QuizBox handle generation to allow difficulty selection
       },
-      disabled: !hasTranscript,
+      disabled: !activeVideoId,
     },
   ];
 
   return (
-    <div className="flex flex-row gap-2 mb-2 bg-gray-100/50 p-1 rounded-xl border border-gray-200/50">
+    <div 
+      className="flex flex-row gap-2 py-1 mb-1 overflow-x-auto scrollbar-none shrink-0"
+      style={{
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        WebkitOverflowScrolling: "touch"
+      }}
+    >
       {buttons.map((btn) => {
         const isActive = viewMode === btn.id;
         return (
@@ -62,21 +65,15 @@ const VideoControls = ({
             whileTap={!btn.disabled ? { scale: 0.95 } : {}}
             onClick={btn.onClick}
             disabled={btn.disabled}
-            className={`relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all duration-200 min-w-0 touch-manipulation active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 shrink-0 touch-manipulation active:scale-95 ${
               isActive
-                ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100 ring-1 ring-black/5"
-                : "text-gray-600 hover:bg-white/60 hover:text-gray-900"
-            } ${btn.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                ? "bg-gray-900 text-white shadow-sm"
+                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+            } ${btn.disabled ? "opacity-40 cursor-not-allowed" : ""}`}
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <span className="text-base sm:text-lg shrink-0">{btn.icon}</span>
-            <span className="text-xs sm:text-sm truncate">{btn.label}</span>
-            {isActive && (
-              <motion.div
-                layoutId="activeIndicator"
-                className="absolute inset-0 rounded-lg sm:rounded-xl ring-2 ring-indigo-500/10 pointer-events-none"
-              />
-            )}
+            <span className="text-sm shrink-0">{btn.icon}</span>
+            <span className="truncate">{btn.label}</span>
           </motion.button>
         );
       })}

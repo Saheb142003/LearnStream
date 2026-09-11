@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AddPlaylistForm from "./AddPlaylistForm";
 import PlaylistList from "./PlaylistList";
 import { AuthContext } from "../../context/AuthContext";
+import SEO from "../../components/SEO";
 
 const BASE_URL = "";
 
@@ -113,6 +114,16 @@ export default function Playlist() {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
+      <SEO
+        title="Your Video Library & Playlists"
+        description="Manage your saved educational playlists, courses, and interactive video notes on LearnStream."
+        url="/playlist"
+        breadcrumbs={[
+          { name: "Home", path: "/" },
+          { name: "Playlists", path: "/playlist" },
+        ]}
+      />
+
       <h2 className="text-3xl font-bold mb-6 text-center text-indigo-700">
         Your Playlists & Videos
       </h2>
@@ -120,7 +131,30 @@ export default function Playlist() {
       <AddPlaylistForm onAdd={handleAdd} />
 
       {error && (
-        <p className="text-center text-red-600 font-semibold">{error}</p>
+        <div className="my-4 max-w-2xl mx-auto p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-left flex items-start gap-3.5 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-amber-500 text-white shrink-0 flex items-center justify-center shadow-xs mt-0.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-xs sm:text-sm text-amber-900 mb-0.5">
+              Unable to Add Content
+            </h4>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              {error}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            className="text-amber-500 hover:text-amber-700 p-1 rounded-lg transition-colors cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       )}
 
       <PlaylistList

@@ -6,6 +6,7 @@ import {
   getTranscriptStats,
 } from "../../services/transcriptService.js";
 import { createRateLimiter } from "../../middleware/rateLimit.js";
+import VideoCache from "../../models/videoCache.js";
 
 const router = express.Router();
 
@@ -85,6 +86,14 @@ router.get("/:videoId/transcript", transcriptRateLimit, async (req, res) => {
   }
 
   try {
+    // 1. Check MongoDB cache first
+    const cached = await VideoCache.findOne({ videoId });
+    if (cached && cached.transcript) {
+      res.set("Cache-Control", "public, max-age=3600");
+      return res.json({ videoId, transcript: cached.transcript, lang });
+    }
+
+    // 2. Fetch transcript
     const transcript = await fetchTranscriptText(videoId, lang);
 
     if (!transcript || transcript.length === 0) {
@@ -92,6 +101,13 @@ router.get("/:videoId/transcript", transcriptRateLimit, async (req, res) => {
         error: `No transcript content for videoId=${videoId} (lang=${lang})`,
       });
     }
+
+    // 3. Cache it in MongoDB
+    await VideoCache.findOneAndUpdate(
+      { videoId },
+      { $set: { transcript } },
+      { upsert: true, new: true }
+    );
 
     // Cache-Control: 1 hour — transcript content is stable
     res.set("Cache-Control", "public, max-age=3600");
@@ -124,15 +140,38 @@ router.get("/:videoId/details", async (req, res) => {
   }
 
   try {
+    // Check MongoDB cache first
+    let cached = await VideoCache.findOne({ videoId });
+    if (cached && cached.title) {
+      return res.json({
+        videoId,
+        title: cached.title,
+        thumbnailUrl: cached.thumbnailUrl,
+        description: cached.description || "",
+      });
+    }
+
     const info = await ytdl.getBasicInfo(videoId);
     const details = info.videoDetails;
+    const title = details.title;
+    const description = details.description || details.shortDescription || "";
+    const thumbnailUrl = details.thumbnails?.[details.thumbnails.length - 1]?.url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+    // Cache details in MongoDB
+    await VideoCache.findOneAndUpdate(
+      { videoId },
+      { $set: { title, thumbnailUrl, description } },
+      { upsert: true, new: true }
+    );
 
     return res.json({
       videoId,
-      title: details.title,
+      title,
       author: details.author.name,
       lengthSeconds: details.lengthSeconds,
       thumbnails: details.thumbnails,
+      thumbnailUrl,
+      description,
     });
   } catch (e) {
     console.error(`[/details] ${videoId}:`, e.message);
