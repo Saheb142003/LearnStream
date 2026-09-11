@@ -1,5 +1,6 @@
-# Sitemap Proxy
+# Sitemap & Health Proxy
 /sitemap.xml  https://learnstream-kywh.onrender.com/api/sitemap  200
+/health       https://learnstream-kywh.onrender.com/health       200
 
 # Proxy /api requests to Render backend
 /api/*  https://learnstream-kywh.onrender.com/api/:splat  200

@@ -69,6 +69,15 @@ app.use(passport.session());
 // Routes
 app.use("/auth", authRoutes);
 
+// Health check route (for UptimeRobot / cron monitoring to prevent cold starts)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Root route
 app.get("/", (req, res) => {
   res.send("🚀 LearnStream server is running...");
